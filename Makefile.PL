@@ -28,6 +28,7 @@ WriteMakefile(
 	CONFIGURE_REQUIRES => {
 		'ExtUtils::MakeMaker' => 6.64,	# Minimum version for TEST_REQUIRES
 	}, TEST_REQUIRES => {
+		'Test::DescribeMe' => 0,
 		'Test::Mockingbird' => '0.13',	# around, mock_scoped, spy, unmock, restore
 		'Test::Most' => 0,
 		'Test::Returns' => 0.04,

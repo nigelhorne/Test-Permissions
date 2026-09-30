@@ -22,6 +22,7 @@ on 'configure' => sub {
 };
 
 on 'test' => sub {
+	requires 'Test::DescribeMe';
 	requires 'Test::Mockingbird', '0.13';   # around, mock_scoped, spy, unmock, restore
 	requires 'Test::Most';
 	requires 'Test::Returns', '0.04';
