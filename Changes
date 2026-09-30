@@ -1,0 +1,16 @@
+Revision history for Test-Permissions
+
+0.01	Tue Sep 29 09:42:12 PM EDT 2026
+	First version, taken from App-makefilepl2cpanfile's private
+	  t/lib/Test/Permissions.pm and extended:
+	Four kinds of access: read, write, create and search.  create is what
+	  the private helper called can_revoke_write; can_revoke_write now
+	  checks a file's own write bit
+	Probe the directory the caller names (default File::Spec->tmpdir),
+	  and cache per kind and canonical directory
+	Every probe checks a baseline, checks that chmod really changed the
+	  mode, and counts only EACCES or EPERM as denied
+	why_not() gives the reason for a 0 answer; skip_unless_can_revoke()
+	  skips a SKIP block with it
+	Probes never die or warn, restore modes and leave nothing behind
+	Messages can be translated with set_messages()

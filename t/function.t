@@ -34,6 +34,7 @@ subtest '_printable' => sub {
 	is($p->("\xE2\x80\xAE"), '\x{202E}', 'bidi control inside a UTF-8 byte string escaped');
 	is($p->("latin1 \xE9 \x9B"), "latin1 \xE9 \\x{9B}", 'invalid UTF-8: C1 bytes escaped, others kept');
 	is($p->(42), '42', 'numbers stringified');
+	is($p->(undef), '', 'undef is empty, without a warning');
 };
 
 subtest '_exception_text' => sub {
