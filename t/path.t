@@ -317,15 +317,24 @@ path('messages.ok');
 
 # ---- _try_exec --------------------------------------------------------------
 
+# Where scripts cannot run, these paths cannot be taken: they are recorded
+# as accounted for (skipped, with the reason), not as missing.
+my @EXEC_PATHS = qw(exec.runs exec.cannot_run exec.bad_exit);
 SKIP: {
-	skip 'needs /bin/sh', 3 if $^O eq 'MSWin32' || !-x '/bin/sh';
+	if($^O eq 'MSWin32' || !-x '/bin/sh') {
+		path($_) for @EXEC_PATHS;
+		skip 'needs /bin/sh', 3;
+	}
 	my $ok = "$dir/run-ok";
 	my $bad = "$dir/run-bad";
 	Test::Permissions::_make_file($ok, "#!/bin/sh\nexit 0\n");
 	Test::Permissions::_make_file($bad, "#!/bin/sh\nexit 1\n");
 	chmod 0700, $ok, $bad;
 	my @r = Test::Permissions::_try_exec($ok);
-	skip "cannot run scripts in $dir", 3 if !$r[0] && $r[1] == Errno::EACCES();
+	if(!$r[0] && $r[1] == Errno::EACCES()) {
+		path($_) for @EXEC_PATHS;
+		skip "cannot run scripts in $dir (noexec?)", 3;
+	}
 	is_deeply(\@r, [ 1, 0 ], 'runs');
 	path('exec.runs');
 	is_deeply([ Test::Permissions::_try_exec("$dir/none") ], [ 0, Errno::ENOENT() ], 'cannot run');

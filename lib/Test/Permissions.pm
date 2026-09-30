@@ -2293,12 +2293,15 @@ sub _setup_sticky {
 
 # _make_file
 #
-# Purpose:  Create a file with the given content.  Setup step: autodie.
+# Purpose:  Create a file with exactly the given bytes (binmode: on
+#           Windows, text mode would turn the script's "\n" into "\r\n").
+#           Setup step: autodie.
 # Entry:    $path; $content.
 # Exit:     Nothing useful.  Throws on failure (close reports write errors).
 sub _make_file {
 	my ($path, $content) = @_;
 	open(my $fh, $OPEN_TRUNCATE, $path);
+	binmode $fh;
 	print {$fh} $content if length $content;
 	close $fh;
 	return;
