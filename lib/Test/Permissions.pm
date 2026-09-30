@@ -23,23 +23,17 @@ use overload ();
 require Exporter;
 our @ISA = ('Exporter');	## no critic (ClassHierarchies::ProhibitExplicitISA)
 
-=encoding utf-8
-
 =head1 NAME
 
 Test::Permissions - Find out whether chmod can really take access away, so tests know when to skip
 
 =head1 VERSION
 
-This document describes Test::Permissions version 0.01.
+0.001.0
 
 =cut
 
-our $VERSION = '0.01';
-
-# -----------------------------------------------------------------------
-# Exports
-# -----------------------------------------------------------------------
+our $VERSION = '0.001.0';
 
 # One tag per family of functions.  A new family (for example can_* or a
 # new skip_unless_* helper) gets its own tag and is added to :all.
@@ -1068,7 +1062,6 @@ sub set_messages {
 # Entry:    $schema_name - a key of %INPUT_SCHEMA; $args - arrayref of @_.
 # Exit:     ($params, undef) on success, with dir set (default tmpdir);
 #           (undef, $message) on a caller error.
-# Effects:  None; $@ and $! are restored.
 sub _check_args {
 	my ($schema_name, $args) = @_;
 	local ($@, $!);
@@ -1114,7 +1107,7 @@ sub _check_args {
 # Entry:    $rule - a hashref from %INPUT_SCHEMA.
 # Exit:     A new hashref.
 sub _hash_rule {
-	my ($rule) = @_;
+	my $rule = $_[0];
 	my %copy = %{$rule};
 	delete $copy{position};
 	$copy{memberof} = [ @{ $copy{memberof} } ] if $copy{memberof};
@@ -1169,7 +1162,7 @@ sub _normalise_args {
 # Entry:    $args - arrayref of @_.
 # Exit:     ($hashref, undef) or (undef, $message).
 sub _check_messages {
-	my ($args) = @_;
+	my $args = $_[0];
 	local ($@, $!);
 
 	return ({}, undef) unless @{$args};
@@ -1628,6 +1621,8 @@ There is no edge between CACHED_YES and CACHED_NO: a cached answer stays
 until C<clear_cache>, even if the environment changes.  C<set_messages>
 changes no state; a cached reason keeps the wording it was given when the
 probe ran.
+
+=encoding utf-8
 
 =head1 FORMAL SPECIFICATION
 
