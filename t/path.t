@@ -39,11 +39,27 @@ sub path { $ledger{$_[0]}++; return }
 my $dir = File::Temp::tempdir(CLEANUP => 1);
 my $canon = Cwd::abs_path($dir);
 
+# chmod_works(): make chmod behave as on Unix whatever the platform, so a
+# scenario reaches the step it is about.  (On Windows chmod 0 leaves mode
+# 0444, and the probe would stop at the mode check.)  _mode_of reports the
+# mode last given to _set_mode.  Returns the guards.
+sub chmod_works {
+	my %mode;
+	my $set = \&Test::Permissions::_set_mode;
+	my $of = \&Test::Permissions::_mode_of;
+	return (
+		Test::Mockingbird::mock_scoped('Test::Permissions', '_set_mode',
+			sub { my $r = $set->(@_); $mode{$_[0]} = $_[1]; $r }),
+		Test::Mockingbird::mock_scoped('Test::Permissions', '_mode_of',
+			sub { exists $mode{$_[0]} ? $mode{$_[0]} : $of->(@_) }),
+	);
+}
+
 # attempt_is(@result): the attempt (second op call) returns @result, or
 # dies if @result is ('die').
 sub attempt_is {
 	my @result = @_;
-	my @guards;
+	my @guards = chmod_works();
 	for my $seam (qw(_try_open _try_stat)) {
 		my $orig = \&{"Test::Permissions::$seam"};
 		my $calls = 0;

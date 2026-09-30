@@ -75,6 +75,8 @@ subtest 'caller state is preserved and does not matter' => sub {
 	my $dir = File::Temp::tempdir(DIR => $root);
 	clear_cache();
 	my $old_umask = umask 0027;
+	# Read it back: Windows keeps only the owner-write bit, so 0027 is 0.
+	my $caller_umask = umask;
 	local $/ = \1;	# record reads
 	local $_ = 'caller topic';
 	$@ = 'caller error';
@@ -84,7 +86,7 @@ subtest 'caller state is preserved and does not matter' => sub {
 	is($@, 'caller error', '$@ unchanged');
 	is(0 + $!, Errno::EINTR(), '$! unchanged');
 	is($_, 'caller topic', '$_ unchanged');
-	is(umask, 0027, 'umask unchanged');
+	is(umask, $caller_umask, 'umask unchanged');
 	umask $old_umask;
 
 	local $/;

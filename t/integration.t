@@ -71,6 +71,7 @@ for my $kind (qw(read write create search)) {
 	if(!$answer) {
 		my $why = why_not($kind, $dir);
 		ok(defined $why && length $why, "$kind: why_not explains a 0");
+		print "# WHY $kind $why\n";
 	}
 	SKIP: {
 		skip_unless_can_revoke($kind, 2, $dir);
@@ -94,8 +95,12 @@ subtest 'a downstream test file' => sub {
 		if($answer{$kind}) {
 			like($output, qr/^ok \d+ - $kind: the restricted operation really fails$/m, "$kind: consistent with a real chmod");
 		} else {
+			# Not every reason names the kind (reason_chmod_ignored does
+			# not), so match the text why_not gave for this kind.
+			my ($why) = $output =~ /^# WHY $kind (.+)$/m;
 			my @skips = $output =~ /^ok \d+ # skip (.+)$/mg;
-			ok((grep { /\Q$kind\E/ } @skips) == 2, "$kind: exactly 2 tests skipped, with the reason");
+			ok(defined $why && (grep { $_ eq $why } @skips) == 2, "$kind: exactly 2 tests skipped, with the reason")
+				or diag($output);
 		}
 	}
 	unlike($output, qr/^not ok/m, 'no failures');
@@ -145,10 +150,11 @@ subtest 'skip helper outside a SKIP block' => sub {
 	my $program = write_program('noskip.pl', <<'PROGRAM');
 use strict;
 use warnings;
+# Before Test::More loads: Test::Builder copies STDERR then, and its
+# end-of-run diagnostics must be captured too, not reach the terminal.
+BEGIN { open(STDERR, '>&', \*STDOUT) or die; $| = 1 }
 use Test::More;
 use Test::Permissions ();
-open(STDERR, '>&', \*STDOUT) or die;
-$| = 1;
 no warnings 'redefine';
 *Test::Permissions::_try_open = sub { (1, 0) };	# simulate root
 Test::Permissions::skip_unless_can_revoke('read', 1);

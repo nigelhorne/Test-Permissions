@@ -25,6 +25,22 @@ use Test::Permissions qw(:all);
 
 my $dir = File::Temp::tempdir(CLEANUP => 1);
 
+# chmod_works(): make chmod behave as on Unix whatever the platform, so a
+# scenario reaches the step it is about.  (On Windows chmod 0 leaves mode
+# 0444, and the probe would stop at the mode check.)  _mode_of reports the
+# mode last given to _set_mode.  Returns the guards.
+sub chmod_works {
+	my %mode;
+	my $set = \&Test::Permissions::_set_mode;
+	my $of = \&Test::Permissions::_mode_of;
+	return (
+		Test::Mockingbird::mock_scoped('Test::Permissions', '_set_mode',
+			sub { my $r = $set->(@_); $mode{$_[0]} = $_[1]; $r }),
+		Test::Mockingbird::mock_scoped('Test::Permissions', '_mode_of',
+			sub { exists $mode{$_[0]} ? $mode{$_[0]} : $of->(@_) }),
+	);
+}
+
 # The environment the next probe will see: 'yes' (attempt denied) or 'no'
 # (attempt succeeds, as for root).
 my $environment = 'yes';
@@ -32,6 +48,7 @@ my $probes = 0;
 my $orig_open = \&Test::Permissions::_try_open;
 my $orig_probe = \&Test::Permissions::_probe;
 my $attempt = 0;
+my @chmod_guards = chmod_works();
 Test::Mockingbird::mock('Test::Permissions', '_probe', sub { $probes++; $attempt = 0; $orig_probe->(@_) });
 Test::Mockingbird::mock('Test::Permissions', '_try_open', sub {
 	return $orig_open->(@_) unless $attempt++;
@@ -157,6 +174,7 @@ subtest 'keys are independent' => sub {
 	is(can_revoke('read', $dir), 1, 'the first key kept its answer');
 };
 
+@chmod_guards = ();
 Test::Mockingbird::restore_all();
 clear_cache();
 done_testing();

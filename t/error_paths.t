@@ -19,6 +19,22 @@ use Test::Permissions qw(:all);
 my @KINDS = qw(read write create search);
 my %RESTRICTED = (read => 0, write => 0400, create => 0500, search => 0);
 
+# chmod_works(): make chmod behave as on Unix whatever the platform, so a
+# scenario reaches the step it is about.  (On Windows chmod 0 leaves mode
+# 0444, and the probe would stop at the mode check.)  _mode_of reports the
+# mode last given to _set_mode.  Returns the guards.
+sub chmod_works {
+	my %mode;
+	my $set = \&Test::Permissions::_set_mode;
+	my $of = \&Test::Permissions::_mode_of;
+	return (
+		Test::Mockingbird::mock_scoped('Test::Permissions', '_set_mode',
+			sub { my $r = $set->(@_); $mode{$_[0]} = $_[1]; $r }),
+		Test::Mockingbird::mock_scoped('Test::Permissions', '_mode_of',
+			sub { exists $mode{$_[0]} ? $mode{$_[0]} : $of->(@_) }),
+	);
+}
+
 # simulate(%how)
 #
 # Mocks the seams so that a probe sees the given outcomes.  Returns the
@@ -30,6 +46,7 @@ my %RESTRICTED = (read => 0, write => 0400, create => 0500, search => 0);
 sub simulate {
 	my (%how) = @_;
 	my @guards;
+	push @guards, chmod_works() unless exists $how{mode};
 
 	for my $seam (qw(_try_open _try_stat)) {
 		my $orig = \&{"Test::Permissions::$seam"};
