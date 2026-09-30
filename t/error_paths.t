@@ -16,8 +16,11 @@ use Test::Warnings;
 use lib 'lib';
 use Test::Permissions qw(:all);
 
-my @KINDS = qw(read write create search);
-my %RESTRICTED = (read => 0, write => 0400, create => 0500, search => 0);
+# The kinds one user can probe.  sticky needs root, and has its own
+# subtest below.
+my @KINDS = qw(read write create search exec delete);
+my %RESTRICTED = (read => 0, write => 0400, create => 0500, search => 0, exec => 0600, delete => 0500);
+my @OP_SEAMS = qw(_try_open _try_stat _try_exec _try_unlink);
 
 # chmod_works(): make chmod behave as on Unix whatever the platform, so a
 # scenario reaches the step it is about.  (On Windows chmod 0 leaves mode
@@ -43,12 +46,13 @@ sub chmod_works {
 #   mode              => what _mode_of returns
 #   make_probe_dir    => true to make it die
 #   restore           => 'die' or 'false' to make the restoring _set_mode fail
+#                        (needs kind, to recognise the restricting chmod)
 sub simulate {
 	my (%how) = @_;
 	my @guards;
 	push @guards, chmod_works() unless exists $how{mode};
 
-	for my $seam (qw(_try_open _try_stat)) {
+	for my $seam (@OP_SEAMS) {
 		my $orig = \&{"Test::Permissions::$seam"};
 		my $calls = 0;
 		push @guards, Test::Mockingbird::mock_scoped('Test::Permissions', $seam, sub {
@@ -76,7 +80,7 @@ sub simulate {
 				die "simulated restore failure\n" if $how{restore} eq 'die';
 				return 0;
 			}
-			$armed = 1 if grep { $mode == $_ } values %RESTRICTED;
+			$armed = 1 if $mode == $RESTRICTED{ $how{kind} };
 			return $orig->(@_);
 		});
 	}
@@ -96,8 +100,8 @@ sub listing {
 my $dir = File::Temp::tempdir(CLEANUP => 1);
 
 subtest 'caller errors croak with the documented messages' => sub {
-	throws_ok { can_revoke('exec', $dir) }
-		qr/\AUnknown access kind 'exec'; expected one of: read, write, create, search at \Q$0\E line/,
+	throws_ok { can_revoke('chown', $dir) }
+		qr/\AUnknown access kind 'chown'; expected one of: read, write, create, search, exec, delete, sticky at \Q$0\E line/,
 		'error_unknown_kind, reported from the caller';
 	throws_ok { can_revoke_read("$dir/missing") } qr/is not a directory/, 'error_not_a_directory: missing';
 	my $file = "$dir/plain";
@@ -157,7 +161,7 @@ for my $scenario (@scenarios) {
 			my $before = listing($dir);
 			my ($answer, $why);
 			{
-				my @guards = simulate(%{ $scenario->{how} });
+				my @guards = simulate(kind => $kind, %{ $scenario->{how} });
 				$answer = can_revoke($kind, $dir);
 				$why = why_not($kind, $dir);
 			}
@@ -236,6 +240,100 @@ subtest 'a translated message with the wrong number of arguments does not warn' 
 	set_messages(reason_setup_failed => 'setup %s %s %s %s %s');
 	like(why_not('read', $dir), qr/\Asetup read /, 'missing arguments become empty');
 	set_messages(reason_setup_failed => q{Could not set up the %s probe in '%s': %s});
+};
+
+subtest 'sticky: needs root, and every outcome by mocking' => sub {
+	clear_cache();
+	{
+		my $g = Test::Mockingbird::mock_scoped('Test::Permissions', '_can_switch_uid', sub { 0 });
+		is(can_revoke_sticky($dir), 0, 'not root: 0');
+		like(why_not('sticky', $dir), qr/\AThe sticky probe in '.*' must act as two users, which needs root \(not Windows\)\z/,
+			'reason_needs_root');
+		is_deeply(listing($dir), [], 'nothing created when the precondition fails');
+	}
+	for my $case (
+		[ 'EPERM from the other user', [ 0, Errno::EPERM() ], 1, undef ],
+		[ 'sticky bit ignored', [ 1, 0 ], 0, qr/^chmod cannot revoke sticky access/ ],
+		[ 'odd errno', [ 0, Errno::EROFS() ], 0, qr/other than permissions/ ],
+	) {
+		my ($name, $attempt, $answer, $reason) = @{$case};
+		clear_cache();
+		my $calls = 0;
+		my @g = (
+			chmod_works(),
+			Test::Mockingbird::mock_scoped('Test::Permissions', '_can_switch_uid', sub { 1 }),
+			Test::Mockingbird::mock_scoped('Test::Permissions', '_give_away', sub { 1 }),
+			Test::Mockingbird::mock_scoped('Test::Permissions', '_try_unlink', sub {
+				my ($path, $as) = @_;
+				is($as, 65533, "$name: acts as the other user") if $calls == 0;
+				return $calls++ ? @{$attempt} : do { unlink $path; (1, 0) };
+			}),
+		);
+		is(can_revoke('sticky', $dir), $answer, "$name: answer");
+		if($reason) {
+			like(why_not('sticky', $dir), $reason, "$name: reason");
+		}
+		is_deeply(listing($dir), [], "$name: nothing left");
+	}
+	clear_cache();
+	{
+		my @g = (
+			Test::Mockingbird::mock_scoped('Test::Permissions', '_can_switch_uid', sub { 1 }),
+			Test::Mockingbird::mock_scoped('Test::Permissions', '_give_away', sub { die "chown refused\n" }),
+		);
+		like(why_not('sticky', $dir), qr/^Could not set up the sticky probe .*: chown refused$/, 'chown fails: reason_setup_failed');
+	}
+	clear_cache();
+	{
+		my @g = (
+			Test::Mockingbird::mock_scoped('Test::Permissions', '_can_switch_uid', sub { 1 }),
+			Test::Mockingbird::mock_scoped('Test::Permissions', '_give_away', sub { 1 }),
+			Test::Mockingbird::mock_scoped('Test::Permissions', '_mode_of', sub { 0777 }),
+			Test::Mockingbird::mock_scoped('Test::Permissions', '_try_unlink', sub { unlink $_[0]; (1, 0) }),
+		);
+		like(why_not('sticky', $dir), qr/^chmod did not set mode 1777 .* \(got 0777\)$/, 'sticky bit not kept: reason_chmod_ignored');
+	}
+	clear_cache();
+};
+
+subtest 'acl_denies croaks' => sub {
+	throws_ok { acl_denies('create', $dir) } qr/^Unknown access kind 'create'; expected one of: read, write, exec at /, 'kind outside read/write/exec';
+	throws_ok { acl_denies('read', "$dir/missing") } qr/^'.*missing' does not exist at /, 'error_no_such_path';
+	throws_ok { acl_denies('read') } qr/Required parameter 'path'/, 'path missing';
+	throws_ok { acl_denies('read', $dir, 'x') } qr/^Too many arguments: expected at most 2, got 3/, 'too many';
+};
+
+subtest 'with_revoked croaks' => sub {
+	my $file = "$dir/wr";
+	open(my $fh, '>', $file) or die $!;
+	close $fh;
+	throws_ok { with_revoked('sticky', $file, sub { 1 }) }
+		qr/^Unknown access kind 'sticky'; expected one of: read, write, create, search, exec, delete at /, 'sticky refused';
+	throws_ok { with_revoked('read', "$dir/missing", sub { 1 }) } qr/does not exist/, 'error_no_such_path';
+	throws_ok { with_revoked('read', $dir, sub { 1 }) } qr/^'.*' is a directory; read access is revoked on a file at /, 'error_not_a_file';
+	throws_ok { with_revoked('search', $file, sub { 1 }) } qr/^'.*wr' is not a directory at /, 'error_not_a_directory';
+	throws_ok { with_revoked('read', $file, 'not code') } qr/'code'/, 'code must be a code reference';
+	{
+		my $g = Test::Mockingbird::mock_scoped('Test::Permissions', '_set_mode', sub { die "no chmod\n" });
+		my $ran = 0;
+		throws_ok { with_revoked('read', $file, sub { $ran++ }) } qr/^Could not chmod '.*wr' to 0000: no chmod at /, 'error_chmod_failed';
+		is($ran, 0, '... and the code did not run');
+	}
+	{
+		my $orig = \&Test::Permissions::_set_mode;
+		my $calls = 0;
+		my $g = Test::Mockingbird::mock_scoped('Test::Permissions', '_set_mode', sub { $calls++ ? die "stuck\n" : $orig->(@_) });
+		throws_ok { with_revoked('read', $file, sub { die "code died\n" }) } qr/^Could not restore mode 0\d{3} on '.*wr': stuck at /,
+			'error_restore_failed wins over the code exception';
+		chmod 0600, $file;
+	}
+	unlink $file;
+};
+
+subtest 'set_cache_scope and permissions_report croak' => sub {
+	throws_ok { set_cache_scope('inode') } qr/'scope'/, 'unknown scope';
+	throws_ok { set_cache_scope() } qr/Required parameter 'scope'/, 'missing scope';
+	throws_ok { permissions_report("$dir/missing") } qr/is not a directory/, 'report: not a directory';
 };
 
 clear_cache();

@@ -11,7 +11,10 @@
 #	P2  the reason is undef exactly when the answer is 1;
 #	P3  the reason names the first step that failed (a cleanup failure
 #	    is appended to it);
-#	P4  whatever the combination, nothing is left in dir.
+#	P4  whatever the combination, nothing is left in dir;
+#	P5  sticky: without the precondition (root), the answer is 0 whatever
+#	    else happens, and nothing is created;
+#	P6  acl_denies = modeAllows AND NOT access.
 
 use strict;
 use warnings;
@@ -41,7 +44,7 @@ my %ATTEMPT = (
 );
 
 my $combinations = 0;
-for my $kind (qw(read write create search)) {
+for my $kind (qw(read write create search exec delete)) {
 	for my $setup (0, 1) {
 		for my $baseline (0, 1) {
 			for my $mode_set (0, 1) {
@@ -55,7 +58,7 @@ for my $kind (qw(read write create search)) {
 		}
 	}
 }
-is($combinations, 4 * 2 * 2 * 2 * 5 * 2, 'every combination checked');
+is($combinations, 6 * 2 * 2 * 2 * 5 * 2, 'every combination checked');
 
 # chmod_works(): make chmod behave as on Unix whatever the platform, so a
 # scenario reaches the step it is about.  (On Windows chmod 0 leaves mode
@@ -80,7 +83,7 @@ sub check {
 	my @guards;
 	push @guards, Test::Mockingbird::mock_scoped('Test::Permissions', '_make_probe_dir', sub { die "no setup\n" })
 		unless $setup;
-	for my $seam (qw(_try_open _try_stat)) {
+	for my $seam (qw(_try_open _try_stat _try_exec _try_unlink)) {
 		my $orig = \&{"Test::Permissions::$seam"};
 		my $calls = 0;
 		push @guards, Test::Mockingbird::mock_scoped('Test::Permissions', $seam, sub {
@@ -124,6 +127,44 @@ sub check {
 	}
 	is_deeply(listing($dir), [], "P4 nothing left: $name");
 }
+
+subtest 'P5 sticky precondition' => sub {
+	for my $root (0, 1) {
+		for my $attempt (qw(ok EPERM)) {
+			clear_cache();
+			my $calls = 0;
+			my @g = (
+				Test::Mockingbird::mock_scoped('Test::Permissions', '_can_switch_uid', sub { $root }),
+				Test::Mockingbird::mock_scoped('Test::Permissions', '_give_away', sub { 1 }),
+				Test::Mockingbird::mock_scoped('Test::Permissions', '_mode_of', sub { 01777 }),
+				Test::Mockingbird::mock_scoped('Test::Permissions', '_try_unlink', sub {
+					return $calls++ ? @{ $ATTEMPT{$attempt} } : do { unlink $_[0]; (1, 0) };
+				}),
+			);
+			my $expected = $root && $attempt eq 'EPERM' ? 1 : 0;
+			is(can_revoke('sticky', $dir), $expected, "root=$root attempt=$attempt");
+			is($calls, 0, "root=$root: no operation without the precondition") unless $root;
+			is_deeply(listing($dir), [], "root=$root attempt=$attempt: nothing left");
+		}
+	}
+	clear_cache();
+};
+
+subtest 'P6 acl_denies truth table' => sub {
+	my $file = "$dir/acl";
+	open(my $fh, '>', $file) or die $!;
+	close $fh;
+	for my $allows (0, 1) {
+		for my $access (0, 1) {
+			my @g = (
+				Test::Mockingbird::mock_scoped('Test::Permissions', '_mode_allows', sub { $allows }),
+				Test::Mockingbird::mock_scoped('Test::Permissions', '_access', sub { $access }),
+			);
+			is(acl_denies(read => $file), ($allows && !$access) ? 1 : 0, "modeAllows=$allows access=$access");
+		}
+	}
+	unlink $file;
+};
 
 clear_cache();
 done_testing();

@@ -174,6 +174,43 @@ subtest 'keys are independent' => sub {
 	is(can_revoke('read', $dir), 1, 'the first key kept its answer');
 };
 
+subtest 'set_cache_scope changes which key is used, not any state' => sub {
+	clear_cache();
+	$environment = 'yes';
+	my $sibling = File::Temp::tempdir(DIR => $dir, CLEANUP => 1);
+	can_revoke('read', $dir);
+	is(probes_during(sub { can_revoke('read', $sibling) }), 1, 'directory scope: a sibling directory is EMPTY');
+	clear_cache();
+	set_cache_scope('device');
+	can_revoke('read', $dir);
+	$environment = 'no';
+	is(probes_during(sub { is(can_revoke('read', $sibling), 1, 'answer shared') }), 0,
+		'device scope: a directory on the same device is CACHED_YES');
+	set_cache_scope('directory');
+	is(probes_during(sub { can_revoke('read', $sibling) }), 1, 'back to directory scope: EMPTY again');
+	clear_cache();
+};
+
+SKIP: {
+	skip 'changing the effective uid needs real root', 1 unless $< == 0 && $> == 0 && $^O ne 'MSWin32';
+	subtest 'a new effective uid uses a new key' => sub {
+		clear_cache();
+		$environment = 'yes';
+		chmod 0755, $dir;
+		can_revoke('read', $dir);
+		{
+			local $> = 65534;
+			if($> == 65534) {
+				is(probes_during(sub { can_revoke('read', $dir) }), 1, 'probed again as the other user');
+			} else {
+				pass('could not change the effective uid here (a one-uid user namespace)');
+			}
+		}
+		is(probes_during(sub { can_revoke('read', $dir) }), 0, "root's entry is still CACHED");
+		clear_cache();
+	};
+}
+
 @chmod_guards = ();
 Test::Mockingbird::restore_all();
 clear_cache();

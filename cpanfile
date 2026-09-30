@@ -1,6 +1,6 @@
 # Generated from Makefile.PL using makefilepl2cpanfile
 
-requires 'perl', '5.010';
+requires 'perl', '5.026';
 
 requires 'Carp';
 requires 'Cwd';

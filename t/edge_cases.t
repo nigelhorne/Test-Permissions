@@ -17,7 +17,7 @@ use Test::Warnings;
 use lib 'lib';
 use Test::Permissions qw(:all);
 
-my @KINDS = qw(read write create search);
+my @KINDS = qw(read write create search exec delete);
 my $root = File::Temp::tempdir(CLEANUP => 1);
 
 sub listing {

@@ -134,7 +134,7 @@ SKIP: {
 		my $before = $count->();
 		for (1 .. 5) {
 			clear_cache();
-			can_revoke($_, $dir) for qw(read write create search);
+			can_revoke($_, $dir) for qw(read write create search exec delete sticky);
 		}
 		is($count->(), $before, 'no descriptor leaked');
 		clear_cache();
@@ -150,6 +150,10 @@ subtest "caller's \$@, \$! and \$_ are saved and restored" => sub {
 		[ skip_unless_can_revoke => sub { SKIP: { skip_unless_can_revoke('create', 1, $dir); pass('in block') } } ],
 		[ clear_cache => sub { clear_cache() } ],
 		[ set_messages => sub { set_messages() } ],
+		[ set_cache_scope => sub { set_cache_scope('directory') } ],
+		[ acl_denies => sub { acl_denies(read => $dir) } ],
+		[ with_revoked => sub { with_revoked(search => $dir, sub { 1 }) } ],
+		[ permissions_report => sub { permissions_report($dir) } ],
 	) {
 		my ($name, $code) = @{$call};
 		local $_ = 'topic';
@@ -161,6 +165,25 @@ subtest "caller's \$@, \$! and \$_ are saved and restored" => sub {
 		is($_, 'topic', "$name: \$_");
 	}
 	clear_cache();
+};
+
+subtest 'mode -> with_revoked -> the same mode' => sub {
+	my $file = File::Spec->catfile($dir, 'flow');
+	open(my $fh, '>', $file) or die $!;
+	close $fh;
+	for my $mode (0600, 0640, 0755, 0444) {
+		chmod $mode, $file;
+		my $before = (stat $file)[2] & 07777;
+		with_revoked(write => $file, sub { 1 });
+		is((stat $file)[2] & 07777, $before, sprintf('mode %04o restored exactly', $mode));
+	}
+	chmod 0600, $file;
+	unlink $file;
+};
+
+subtest 'effective uid and groups -> cache key' => sub {
+	my ($euid, $egids) = ($>, $));
+	like(Test::Permissions::_cache_key('read', $canon), qr/\Aread\x00\Q$euid\E\x00\Q$egids\E\x00/, 'both are part of the key');
 };
 
 done_testing();

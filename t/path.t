@@ -32,6 +32,16 @@ my %ledger = map { $_ => 0 } qw(
 	msg.default msg.override msg.sprintf_dies
 	printable.chars printable.utf8_bytes printable.other_bytes
 	messages.empty messages.unknown_key messages.invalid_value messages.get_params_croak messages.ok
+	args.path_missing args.path_ok
+	probe.precondition_fails probe.sticky_bits
+	exec.runs exec.cannot_run exec.bad_exit
+	unlink.plain unlink.chdir_fails unlink.cannot_switch
+	skip.test2
+	acl.root acl.owner acl.group acl.other acl.mode_denies acl.access_denies acl.allowed
+	guard.file_on_dir guard.dir_on_file guard.chmod_fails guard.restore_fails guard.code_dies
+	guard.list guard.scalar guard.void
+	scope.directory scope.device scope.device_stat_fails
+	report.yes report.no
 );
 
 sub path { $ledger{$_[0]}++; return }
@@ -60,7 +70,7 @@ sub chmod_works {
 sub attempt_is {
 	my @result = @_;
 	my @guards = chmod_works();
-	for my $seam (qw(_try_open _try_stat)) {
+	for my $seam (qw(_try_open _try_stat _try_exec _try_unlink)) {
 		my $orig = \&{"Test::Permissions::$seam"};
 		my $calls = 0;
 		push @guards, Test::Mockingbird::mock_scoped('Test::Permissions', $seam, sub {
@@ -270,6 +280,192 @@ throws_ok { Test::Permissions::set_messages(1, 2, 3) } qr/Usage/, 'odd list';
 path('messages.get_params_croak');
 lives_ok { Test::Permissions::set_messages(reason_other_error => q{%s access in '%s' failed for a reason other than permissions: %s}) } 'valid';
 path('messages.ok');
+
+# ---- new argument paths -----------------------------------------------------
+
+{
+	my ($p, $e) = Test::Permissions::_check_args('acl', [ 'read', "$dir/none" ]);
+	like($e, qr/does not exist/, 'path missing');
+	path('args.path_missing');
+	($p, $e) = Test::Permissions::_check_args('acl', [ 'read', $dir ]);
+	is($e, undef, 'path exists');
+	path('args.path_ok');
+}
+
+# ---- sticky ---------------------------------------------------------------
+
+{
+	my $g = Test::Mockingbird::mock_scoped('Test::Permissions', '_can_switch_uid', sub { 0 });
+	like(probe('sticky')->[1], qr/needs root/, 'precondition fails: no probe');
+	path('probe.precondition_fails');
+}
+{
+	my @g = (
+		Test::Mockingbird::mock_scoped('Test::Permissions', '_can_switch_uid', sub { 1 }),
+		Test::Mockingbird::mock_scoped('Test::Permissions', '_give_away', sub { 1 }),
+		Test::Mockingbird::mock_scoped('Test::Permissions', '_try_unlink', sub { unlink $_[0]; (1, 0) }),
+	);
+	# 01777 has the sticky bit, which is not an owner bit: comparing only
+	# owner bits would pass 0777 too.
+	my $g2 = Test::Mockingbird::mock_scoped('Test::Permissions', '_mode_of', sub { 0777 });
+	like(probe('sticky')->[1], qr/did not set mode 1777 .* \(got 0777\)/, 'sticky compares all mode bits');
+	path('probe.sticky_bits');
+}
+
+# ---- _try_exec --------------------------------------------------------------
+
+SKIP: {
+	skip 'needs /bin/sh', 3 if $^O eq 'MSWin32' || !-x '/bin/sh';
+	my $ok = "$dir/run-ok";
+	my $bad = "$dir/run-bad";
+	Test::Permissions::_make_file($ok, "#!/bin/sh\nexit 0\n");
+	Test::Permissions::_make_file($bad, "#!/bin/sh\nexit 1\n");
+	chmod 0700, $ok, $bad;
+	my @r = Test::Permissions::_try_exec($ok);
+	skip "cannot run scripts in $dir", 3 if !$r[0] && $r[1] == Errno::EACCES();
+	is_deeply(\@r, [ 1, 0 ], 'runs');
+	path('exec.runs');
+	is_deeply([ Test::Permissions::_try_exec("$dir/none") ], [ 0, Errno::ENOENT() ], 'cannot run');
+	path('exec.cannot_run');
+	is_deeply([ Test::Permissions::_try_exec($bad) ], [ 0, Errno::ENOEXEC() ], 'bad exit');
+	path('exec.bad_exit');
+	unlink $ok, $bad;
+}
+
+# ---- _try_unlink ------------------------------------------------------------
+
+{
+	my $f = "$dir/unl";
+	Test::Permissions::_make_file($f, '');
+	is_deeply([ Test::Permissions::_try_unlink($f) ], [ 1, 0 ], 'plain unlink');
+	path('unlink.plain');
+	throws_ok { Test::Permissions::_try_unlink("$dir/no/f", 1) } qr/^chdir/, 'chdir fails';
+	path('unlink.chdir_fails');
+	SKIP: {
+		skip 'root can switch', 1 if $> == 0 && $< == 0;
+		Test::Permissions::_make_file($f, '');
+		throws_ok { Test::Permissions::_try_unlink($f, 65533) } qr/cannot act as uid/, 'cannot switch uid';
+		unlink $f;
+	}
+	path('unlink.cannot_switch');
+}
+
+# ---- skip through Test2::API ------------------------------------------------
+
+Test::Permissions::clear_cache();
+{
+	my @g = attempt_is(1, 0);
+	# Pretend this is a Test2::V0 suite: Test2::API loaded, Test::Builder not.
+	local $INC{'Test/Builder.pm'};
+	delete $INC{'Test/Builder.pm'};
+	SKIP: {
+		Test::Permissions::skip_unless_can_revoke('read', 1, $dir);
+		fail('Test2 path: not reached');
+	}
+	path('skip.test2');
+}
+Test::Permissions::clear_cache();
+
+# ---- acl_denies -------------------------------------------------------------
+
+{
+	my $m = \&Test::Permissions::_mode_allows;
+	if($> == 0 && $^O ne 'MSWin32') {
+		is($m->('read', [ (0) x 2, 0, 0, 1, 1 ], 0), 1, 'root');
+	} else {
+		pass('root branch runs only as root (CI root job)');
+	}
+	path('acl.root');
+	SKIP: {
+		skip 'non-root branches', 3 if $> == 0 && $^O ne 'MSWin32';
+		my $gid = (split ' ', $))[0];
+		is($m->('read', [ 0, 0, 0400, 0, $>, -1 ], 0), 1, 'owner');
+		is($m->('read', [ 0, 0, 0040, 0, -1, $gid ], 0), 1, 'group');
+		is($m->('read', [ 0, 0, 0004, 0, -1, -1 ], 0), 1, 'other');
+	}
+	path($_) for qw(acl.owner acl.group acl.other);
+
+	my $f = "$dir/aclf";
+	Test::Permissions::_make_file($f, '');
+	{
+		my $g = Test::Mockingbird::mock_scoped('Test::Permissions', '_mode_allows', sub { 0 });
+		is(Test::Permissions::acl_denies(read => $f), 0, 'mode denies');
+		path('acl.mode_denies');
+	}
+	{
+		my $g = Test::Mockingbird::mock_scoped('Test::Permissions', '_access', sub { 0 });
+		my $g2 = Test::Mockingbird::mock_scoped('Test::Permissions', '_mode_allows', sub { 1 });
+		is(Test::Permissions::acl_denies(read => $f), 1, 'access denies');
+		path('acl.access_denies');
+	}
+	is(Test::Permissions::acl_denies(read => $f), 0, 'allowed');
+	path('acl.allowed');
+	unlink $f;
+}
+
+# ---- with_revoked -----------------------------------------------------------
+
+{
+	my $f = "$dir/wrf";
+	Test::Permissions::_make_file($f, '');
+	throws_ok { Test::Permissions::with_revoked(read => $dir, sub { 1 }) } qr/is a directory/, 'file kind on a directory';
+	path('guard.file_on_dir');
+	throws_ok { Test::Permissions::with_revoked(search => $f, sub { 1 }) } qr/is not a directory/, 'directory kind on a file';
+	path('guard.dir_on_file');
+	{
+		my $g = Test::Mockingbird::mock_scoped('Test::Permissions', '_set_mode', sub { 0 });
+		throws_ok { Test::Permissions::with_revoked(read => $f, sub { 1 }) } qr/Could not chmod/, 'chmod fails (returns false)';
+		path('guard.chmod_fails');
+	}
+	{
+		my $orig = \&Test::Permissions::_set_mode;
+		my $n = 0;
+		my $g = Test::Mockingbird::mock_scoped('Test::Permissions', '_set_mode', sub { $n++ ? die "no\n" : $orig->(@_) });
+		throws_ok { Test::Permissions::with_revoked(read => $f, sub { 1 }) } qr/Could not restore/, 'restore fails';
+		path('guard.restore_fails');
+		chmod 0600, $f;
+	}
+	throws_ok { Test::Permissions::with_revoked(read => $f, sub { die "inner\n" }) } qr/^inner$/, 'code dies';
+	path('guard.code_dies');
+	my @l = Test::Permissions::with_revoked(read => $f, sub { wantarray ? (1, 2) : 'scalar' });
+	is_deeply(\@l, [ 1, 2 ], 'list context');
+	path('guard.list');
+	my $sc = Test::Permissions::with_revoked(read => $f, sub { wantarray ? (1, 2) : 'scalar' });
+	is($sc, 'scalar', 'scalar context');
+	path('guard.scalar');
+	my $ctx;
+	Test::Permissions::with_revoked(read => $f, sub { $ctx = defined wantarray ? 'not void' : 'void' });
+	is($ctx, 'void', 'void context');
+	path('guard.void');
+	unlink $f;
+}
+
+# ---- cache scope --------------------------------------------------------------
+
+like(Test::Permissions::_cache_key('read', $canon), qr/\0dir:/, 'directory scope');
+path('scope.directory');
+Test::Permissions::set_cache_scope('device');
+like(Test::Permissions::_cache_key('read', $canon), qr/\0dev:\d+$/, 'device scope');
+path('scope.device');
+like(Test::Permissions::_cache_key('read', "$canon/none"), qr/\0dir:/, 'device scope, stat fails');
+path('scope.device_stat_fails');
+Test::Permissions::set_cache_scope('directory');
+
+# ---- permissions_report -------------------------------------------------------
+
+Test::Permissions::clear_cache();
+{
+	my @g = attempt_is(0, Errno::EACCES());
+	like(Test::Permissions::permissions_report($dir), qr/^  read: yes$/m, 'yes line');
+	path('report.yes');
+}
+Test::Permissions::clear_cache();
+{
+	my @g = attempt_is(1, 0);
+	like(Test::Permissions::permissions_report($dir), qr/^  read: no - chmod cannot revoke/m, 'no line');
+	path('report.no');
+}
+Test::Permissions::clear_cache();
 
 subtest 'ledger' => sub {
 	ok($ledger{$_}, "path taken: $_") for sort keys %ledger;

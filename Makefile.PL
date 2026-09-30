@@ -75,7 +75,7 @@ WriteMakefile(
 			}
 		},
 	},
-	# //= in the module, and Return::Set needs 5.010.  The test suite needs
-	# 5.016 (Test::Mockingbird).
-	MIN_PERL_VERSION	=> '5.010'
+	# Params::Validate::Strict (and so Return::Set) needs 5.026.  The module
+	# itself needs only 5.010 (//=), and Test::Mockingbird needs 5.016.
+	MIN_PERL_VERSION	=> '5.026'
 );

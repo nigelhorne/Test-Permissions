@@ -22,23 +22,29 @@ use Test::Permissions ();
 my %ledger = map { $_ => 0 } (
 	# functions
 	'fn:can_revoke_read', 'fn:can_revoke_write', 'fn:can_revoke_create', 'fn:can_revoke_search',
+	'fn:can_revoke_exec', 'fn:can_revoke_delete', 'fn:can_revoke_sticky',
 	'fn:can_revoke', 'fn:why_not', 'fn:skip_unless_can_revoke', 'fn:clear_cache', 'fn:set_messages',
+	'fn:acl_denies', 'fn:with_revoked', 'fn:permissions_report', 'fn:set_cache_scope',
 	# argument forms
 	'form:none', 'form:positional', 'form:named', 'form:hashref', 'form:object',
 	# exports
 	'export:none-by-default', 'export:ok', 'export:all', 'export:revoke',
+	'export:acl', 'export:guard', 'export:report',
 	# messages
 	(map { "msg:$_" } qw(
-		error_unknown_kind error_not_a_directory error_unknown_message error_too_many_arguments
+		error_unknown_kind error_not_a_directory error_not_a_file error_no_such_path
+		error_unknown_message error_too_many_arguments error_chmod_failed error_restore_failed
 		reason_not_enforced reason_chmod_ignored reason_baseline_failed reason_other_error
-		reason_setup_failed reason_cleanup_failed reason_probe_succeeded
+		reason_setup_failed reason_cleanup_failed reason_probe_succeeded reason_needs_root
+		report_header report_yes report_no
 	)),
 );
 
 sub covered { $ledger{$_}++ for @_; return }
 
 my $dir = File::Temp::tempdir(CLEANUP => 1);
-my @KINDS = qw(read write create search);
+my @KINDS = qw(read write create search exec delete sticky);
+my $ALL_KINDS = 'read, write, create, search, exec, delete, sticky';
 
 # chmod_works(): make chmod behave as on Unix whatever the platform, so a
 # scenario reaches the step it is about.  (On Windows chmod 0 leaves mode
@@ -59,7 +65,7 @@ sub chmod_works {
 sub simulate_attempt {
 	my ($ok, $errno) = @_;
 	my @guards = chmod_works();
-	for my $seam (qw(_try_open _try_stat)) {
+	for my $seam (qw(_try_open _try_stat _try_exec _try_unlink)) {
 		my $orig = \&{"Test::Permissions::$seam"};
 		my $calls = 0;
 		push @guards, Test::Mockingbird::mock_scoped('Test::Permissions', $seam,
@@ -83,9 +89,19 @@ subtest 'exports' => sub {
 
 	package Ex::Revoke { Test::Permissions->import(':revoke') }
 	ok(defined &{"Ex::Revoke::$_"}, ":revoke has $_")
-		for qw(can_revoke_read can_revoke_write can_revoke_create can_revoke_search can_revoke why_not skip_unless_can_revoke);
+		for qw(can_revoke_read can_revoke_write can_revoke_create can_revoke_search
+			can_revoke_exec can_revoke_delete can_revoke_sticky can_revoke why_not skip_unless_can_revoke);
 	ok(!defined &Ex::Revoke::clear_cache && !defined &Ex::Revoke::set_messages, ':revoke excludes the general functions');
+	ok(!defined &Ex::Revoke::with_revoked, ':revoke excludes the other families');
 	covered('export:revoke');
+
+	package Ex::Acl { Test::Permissions->import(':acl') }
+	package Ex::Guard { Test::Permissions->import(':guard') }
+	package Ex::Report { Test::Permissions->import(':report') }
+	ok(defined &Ex::Acl::acl_denies && !defined &Ex::Acl::can_revoke, ':acl is acl_denies');
+	ok(defined &Ex::Guard::with_revoked && !defined &Ex::Guard::acl_denies, ':guard is with_revoked');
+	ok(defined &Ex::Report::permissions_report && !defined &Ex::Report::with_revoked, ':report is permissions_report');
+	covered('export:acl', 'export:guard', 'export:report');
 
 	throws_ok { Test::Permissions->import('no_such_function') } qr/not exported/, 'unknown import refused';
 };
@@ -215,7 +231,7 @@ subtest 'reasons' => sub {
 };
 
 subtest 'errors' => sub {
-	throws_ok { Test::Permissions::can_revoke('bogus') } qr/^Unknown access kind 'bogus'; expected one of: read, write, create, search at /,
+	throws_ok { Test::Permissions::can_revoke('bogus') } qr/^Unknown access kind 'bogus'; expected one of: \Q$ALL_KINDS\E at /,
 		'error_unknown_kind';
 	covered('msg:error_unknown_kind');
 	throws_ok { Test::Permissions::why_not('read', File::Spec->catdir($dir, 'nope')) } qr/^'.*nope' is not a directory at /,
@@ -233,11 +249,122 @@ subtest 'set_messages' => sub {
 	my @r = Test::Permissions::set_messages();
 	is(scalar @r, 0, 'returns nothing');
 	Test::Permissions::set_messages({ error_unknown_kind => 'Type inconnu %s (%s)' });
-	throws_ok { Test::Permissions::can_revoke('x') } qr/^Type inconnu x \(read, write, create, search\)/, 'hashref form, used at once';
+	throws_ok { Test::Permissions::can_revoke('x') } qr/^Type inconnu x \(\Q$ALL_KINDS\E\)/, 'hashref form, used at once';
 	Test::Permissions::set_messages(error_unknown_kind => q{Unknown access kind '%s'; expected one of: %s});
 	throws_ok { Test::Permissions::set_messages(error_unknown_kind => 'new', bogus => 'x') } qr/bogus/, 'one bad key';
 	throws_ok { Test::Permissions::can_revoke('x') } qr/^Unknown access kind/, '... and nothing was changed';
 	covered('fn:set_messages');
+};
+
+subtest 'more errors' => sub {
+	my $file = File::Spec->catfile($dir, 'unit-file');
+	open(my $fh, '>', $file) or die $!;
+	close $fh;
+	throws_ok { Test::Permissions::acl_denies(read => "$file.x") } qr/^'.*' does not exist at /, 'error_no_such_path';
+	covered('msg:error_no_such_path');
+	throws_ok { Test::Permissions::with_revoked(write => $dir, sub { 1 }) } qr/^'.*' is a directory; write access is revoked on a file at /,
+		'error_not_a_file';
+	covered('msg:error_not_a_file');
+	{
+		my $g = Test::Mockingbird::mock_scoped('Test::Permissions', '_set_mode', sub { die "EPERM\n" });
+		throws_ok { Test::Permissions::with_revoked(read => $file, sub { 1 }) } qr/^Could not chmod '.*' to 0000: EPERM at /,
+			'error_chmod_failed';
+	}
+	covered('msg:error_chmod_failed');
+	{
+		my $orig = \&Test::Permissions::_set_mode;
+		my $n = 0;
+		my $g = Test::Mockingbird::mock_scoped('Test::Permissions', '_set_mode', sub { $n++ ? die "EIO\n" : $orig->(@_) });
+		throws_ok { Test::Permissions::with_revoked(read => $file, sub { 1 }) } qr/^Could not restore mode 0\d+ on '.*': EIO at /,
+			'error_restore_failed';
+	}
+	covered('msg:error_restore_failed');
+	chmod 0600, $file;
+	unlink $file;
+};
+
+subtest 'can_revoke_sticky without root' => sub {
+	Test::Permissions::clear_cache();
+	my $g = Test::Mockingbird::mock_scoped('Test::Permissions', '_can_switch_uid', sub { 0 });
+	is(Test::Permissions::can_revoke_sticky($dir), 0, 'answer 0');
+	like(Test::Permissions::why_not('sticky', $dir), qr/must act as two users, which needs root/, 'reason_needs_root');
+	covered('msg:reason_needs_root');
+	Test::Permissions::clear_cache();
+};
+
+subtest 'acl_denies' => sub {
+	my $file = File::Spec->catfile($dir, 'acl-file');
+	open(my $fh, '>', $file) or die $!;
+	close $fh;
+	chmod 0644, $file;
+	for my $kind (qw(read write exec)) {
+		my $answer = Test::Permissions::acl_denies($kind, $file);
+		returns_ok($answer, { type => 'boolean' }, "$kind: boolean");
+	}
+	is(Test::Permissions::acl_denies(read => $file), 0, 'a plain file: no ACL denial');
+	{
+		my $g = Test::Mockingbird::mock_scoped('Test::Permissions', '_access', sub { 0 });
+		is(Test::Permissions::acl_denies(read => $file), 1, 'mode allows, system denies: 1');
+		is(Test::Permissions::acl_denies(exec => $file), 0, 'mode denies too: 0') unless $> == 0 && $^O ne 'MSWin32';
+	}
+	is(Test::Permissions::acl_denies({ kind => 'write', path => $file }), 0, 'hashref form');
+	unlink $file;
+	covered('fn:acl_denies');
+};
+
+subtest 'with_revoked' => sub {
+	my $file = File::Spec->catfile($dir, 'guarded');
+	open(my $fh, '>', $file) or die $!;
+	close $fh;
+	chmod 0640, $file;
+	my $seen;
+	my $r = Test::Permissions::with_revoked(read => $file, sub { $seen = (stat $file)[2] & 07777; 'result' });
+	is($r, 'result', 'returns what the code returns');
+	is($seen, 0, 'mode 0 while the code runs') unless $^O eq 'MSWin32';
+	is((stat $file)[2] & 07777, 0640, 'old mode restored') unless $^O eq 'MSWin32';
+	my @list = Test::Permissions::with_revoked(write => $file, sub { (1, 2, 3) });
+	is_deeply(\@list, [ 1, 2, 3 ], 'list context');
+	my $object = bless {}, 'Some::Error';
+	throws_ok { Test::Permissions::with_revoked(write => $file, sub { die $object }) } 'Some::Error', 'exception object passed on unchanged';
+	is((stat $file)[2] & 07777, 0640, 'restored after the exception') unless $^O eq 'MSWin32';
+	my $sub = File::Spec->catdir($dir, 'guarded-dir');
+	mkdir $sub or die $!;
+	lives_ok { Test::Permissions::with_revoked(search => $sub, sub { 1 }) } 'a directory kind';
+	rmdir $sub;
+	unlink $file;
+	covered('fn:with_revoked');
+};
+
+subtest 'permissions_report' => sub {
+	my $report = Test::Permissions::permissions_report($dir);
+	returns_ok($report, { type => 'string', min => 1 }, 'a string');
+	my @lines = split /\n/, $report;
+	like($lines[0], qr/^Test::Permissions \Q$Test::Permissions::VERSION\E in '.+' \(effective uid \d+\):$/, 'report_header');
+	is(scalar @lines, 1 + @KINDS, 'one line per kind');
+	for my $i (0 .. $#KINDS) {
+		like($lines[$i + 1], qr/^  $KINDS[$i]: (?:yes|no - .+)$/, "line for $KINDS[$i]");
+	}
+	like($report, qr/^  \w+: yes$/m, 'report_yes') if grep { Test::Permissions::can_revoke($_, $dir) } @KINDS;
+	like($report, qr/^  sticky: no - /m, 'report_no') unless Test::Permissions::can_revoke_sticky($dir);
+	unlike($report, qr/\n\z/, 'no trailing newline');
+	covered('fn:permissions_report', 'msg:report_header', 'msg:report_yes', 'msg:report_no');
+};
+
+subtest 'set_cache_scope' => sub {
+	my @r = Test::Permissions::set_cache_scope('device');
+	is(scalar @r, 0, 'returns nothing');
+	Test::Permissions::clear_cache();
+	my $other = File::Temp::tempdir(DIR => $dir, CLEANUP => 1);
+	my $spy = Test::Mockingbird::spy('Test::Permissions', '_probe');
+	Test::Permissions::can_revoke_read($dir);
+	Test::Permissions::can_revoke_read($other);
+	is(scalar(my @c = $spy->()), 1, 'device scope: one probe for two directories on one device');
+	Test::Permissions::set_cache_scope(scope => 'directory');
+	Test::Permissions::can_revoke_read($other);
+	is(scalar(@c = $spy->()), 2, 'directory scope: probed again');
+	Test::Mockingbird::restore_all();
+	Test::Permissions::clear_cache();
+	covered('fn:set_cache_scope');
 };
 
 subtest 'POD documents every message key' => sub {
@@ -246,7 +373,7 @@ subtest 'POD documents every message key' => sub {
 	my $source = do { local $/; <$fh> };
 	close $fh;
 	for my $key (grep { s/^msg:// } my @k = keys %ledger) {
-		like($source, qr/\($key\)/, "$key has a MESSAGES entry");
+		like($source, qr/\($key\)|C<$key>/, "$key has a MESSAGES entry");
 	}
 	my ($messages) = $source =~ /Readonly::Hash my %MESSAGES => \((.*?)\n\);/s;
 	my @in_code = $messages =~ /^\t(\w+)\s+=>/mg;

@@ -2,16 +2,21 @@
 
 # Equivalence partitions and boundary values for every input and output.
 #
-#	kind    valid: read | write | create | search
+#	kind    valid: read | write | create | search | exec | delete | sticky
+#	        (acl_denies: read | write | exec; with_revoked: all but sticky)
 #	        invalid: other strings (case, spaces, prefixes), '', undef
 #	        (treated as missing), references
+#	path    valid: an existing file or directory (with_revoked: the right
+#	        one for the kind); invalid: missing, '', a reference
+#	code    valid: a code reference; invalid: anything else
+#	scope   valid: directory | device; invalid: anything else
 #	dir     valid: an existing directory (absolute, relative, with a
 #	        trailing separator, a stringifying object); undef/absent ->
 #	        tmpdir
 #	        invalid: '', a missing path, a file, a reference
 #	count   valid: whole numbers >= 1 (boundary 1; large)
 #	        invalid: 0, negatives, fractions, non-numbers, absent
-#	message keys: the 11 documented keys; anything else is refused
+#	message keys: the 19 documented keys; anything else is refused
 #	message texts: non-empty strings; '', undef and references refused
 #	answer  exactly 1 or 0
 #	reason  undef (answer 1) or a non-empty single-line string
@@ -49,10 +54,10 @@ sub chmod_works {
 }
 
 subtest 'kind' => sub {
-	for my $kind (qw(read write create search)) {
+	for my $kind (qw(read write create search exec delete sticky)) {
 		lives_ok { can_revoke($kind, $dir) } "valid: $kind";
 	}
-	for my $kind ('Read', 'SEARCH', ' read', 'read ', 're', 'reads', 'exec', 'delete', 'sticky', '0', "read\n") {
+	for my $kind ('Read', 'SEARCH', ' read', 'read ', 're', 'reads', 'execute', 'chown', 'acl', '0', "read\n") {
 		(my $shown = $kind) =~ s/\n/\\n/g;
 		throws_ok { can_revoke($kind, $dir) } qr/^Unknown access kind/, "invalid: '$shown'";
 	}
@@ -103,7 +108,7 @@ subtest 'count' => sub {
 
 subtest 'outputs' => sub {
 	Test::Permissions::clear_cache();
-	for my $kind (qw(read write create search)) {
+	for my $kind (qw(read write create search exec delete sticky)) {
 		my $answer = can_revoke($kind, $dir);
 		ok($answer eq '1' || $answer eq '0', "$kind: answer is exactly 1 or 0");
 		returns_ok($answer, { type => 'boolean' }, "$kind: boolean");
@@ -115,6 +120,52 @@ subtest 'outputs' => sub {
 	clear_cache();
 	unlike(why_not('read', $dir), qr/\n/, 'multi-line exception texts are escaped onto one line');
 	clear_cache();
+};
+
+subtest 'acl_denies: kind and path' => sub {
+	my $file = File::Spec->catfile($dir, 'acl');
+	open(my $fh, '>', $file) or die $!;
+	close $fh;
+	for my $kind (qw(read write exec)) {
+		lives_ok { acl_denies($kind, $file) } "valid kind: $kind";
+	}
+	lives_ok { acl_denies(exec => $dir) } 'a directory (exec = search)';
+	for my $kind (qw(create search delete sticky)) {
+		throws_ok { acl_denies($kind, $file) } qr/^Unknown access kind/, "invalid kind: $kind";
+	}
+	throws_ok { acl_denies(read => '') } qr/too short/, "path ''";
+	throws_ok { acl_denies(read => "$file.none") } qr/does not exist/, 'missing path';
+	throws_ok { acl_denies(read => [ $file ]) } qr/must be a string/, 'reference';
+	unlink $file;
+};
+
+subtest 'with_revoked: kind, path and code' => sub {
+	my $file = File::Spec->catfile($dir, 'guard');
+	open(my $fh, '>', $file) or die $!;
+	close $fh;
+	for my $kind (qw(read write exec)) {
+		lives_ok { with_revoked($kind, $file, sub { 1 }) } "file kind: $kind";
+		throws_ok { with_revoked($kind, $dir, sub { 1 }) } qr/is a directory/, "file kind on a directory: $kind";
+	}
+	for my $kind (qw(create search delete)) {
+		lives_ok { with_revoked($kind, $dir, sub { 1 }) } "directory kind: $kind";
+		throws_ok { with_revoked($kind, $file, sub { 1 }) } qr/is not a directory/, "directory kind on a file: $kind";
+	}
+	throws_ok { with_revoked(sticky => $dir, sub { 1 }) } qr/^Unknown access kind/, 'sticky';
+	for my $code ('sub', 1, [], {}) {
+		throws_ok { with_revoked(read => $file, $code) } qr/'code'/, 'code: ' . (ref $code || "'$code'");
+	}
+	throws_ok { with_revoked(read => $file) } qr/'code' is missing/, 'code absent';
+	unlink $file;
+};
+
+subtest 'set_cache_scope: scope' => sub {
+	for my $scope (qw(device directory)) {
+		lives_ok { set_cache_scope($scope) } "valid: $scope";
+	}
+	for my $scope ('Directory', 'dev', 'mount', '') {
+		throws_ok { set_cache_scope($scope) } qr/'scope'/, "invalid: '$scope'";
+	}
 };
 
 subtest 'message keys and texts' => sub {

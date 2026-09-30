@@ -160,7 +160,7 @@ subtest 'seams' => sub {
 
 subtest 'setup helpers' => sub {
 	my $p = Test::Permissions::_make_probe_dir($dir);
-	my $paths = Test::Permissions::_setup_file($p);
+	my $paths = Test::Permissions::_setup_file($p, 'x', 0600);
 	is($paths->{target}, $paths->{object}, '_setup_file: target is the object');
 	is(-s $paths->{object}, 1, '... one byte');
 	is(mode_of($paths->{object}), 0600, '... mode 0600') unless $^O eq 'MSWin32';
@@ -180,7 +180,7 @@ subtest 'setup helpers' => sub {
 	{
 		my $old = umask 0777;
 		my $q = Test::Permissions::_make_probe_dir($dir);
-		my $f = Test::Permissions::_setup_file($q);
+		my $f = Test::Permissions::_setup_file($q, 'x', 0600);
 		umask $old;
 		is(mode_of($f->{object}), 0600, 'explicit modes: umask 0777 does not matter') unless $^O eq 'MSWin32';
 		File::Path::remove_tree($q);
@@ -216,7 +216,7 @@ subtest '_cleanup' => sub {
 };
 
 subtest '_probe' => sub {
-	for my $kind (qw(read write create search)) {
+	for my $kind (qw(read write create search exec delete sticky)) {
 		my @r = Test::Permissions::_probe($kind, Cwd::abs_path($dir));
 		is(scalar @r, 2, "$kind: (answer, reason)");
 		ok($r[0] ? !defined $r[1] : length $r[1], "$kind: reason iff answer is 0");
@@ -232,6 +232,139 @@ subtest '_answer' => sub {
 	my $a2 = Test::Permissions::_answer('read', "$dir/.");
 	is($a1, $a2, 'same entry for another spelling of the directory');
 	Test::Permissions::clear_cache();
+};
+
+subtest '_setup_file with a script' => sub {
+	my $p = Test::Permissions::_make_probe_dir($dir);
+	my $paths = Test::Permissions::_setup_file($p, "#!/bin/sh\nexit 0\n", 0700);
+	is(mode_of($paths->{object}), 0700, 'mode as given') unless $^O eq 'MSWin32';
+	is(-s $paths->{object}, 17, 'content as given');
+	File::Path::remove_tree($p);
+};
+
+subtest '_setup_sticky' => sub {
+	my $p = Test::Permissions::_make_probe_dir($dir);
+	my @given;
+	my $g = Test::Mockingbird::mock_scoped('Test::Permissions', '_give_away', sub { push @given, [ @_ ]; 1 });
+	my $paths = Test::Permissions::_setup_sticky($p);
+	is(mode_of($paths->{target}), 0777, 'directory 0777') unless $^O eq 'MSWin32';
+	ok(-f $paths->{object}, 'file inside');
+	is_deeply(\@given, [ [ $paths->{object}, 65534 ] ], 'file given to the owner uid');
+	is($paths->{as}, 65533, 'deleted as the other uid');
+	File::Path::remove_tree($p);
+};
+
+subtest '_try_exec' => sub {
+	SKIP: {
+		skip 'needs /bin/sh', 3 if $^O eq 'MSWin32' || !-x '/bin/sh';
+		my $p = Test::Permissions::_make_probe_dir($dir);
+		my $ok = File::Spec->catfile($p, 'ok');
+		my $bad = File::Spec->catfile($p, 'bad');
+		Test::Permissions::_make_file($ok, "#!/bin/sh\nexit 0\n");
+		Test::Permissions::_make_file($bad, "#!/bin/sh\nexit 3\n");
+		chmod 0700, $ok, $bad;
+		my ($r, $e) = Test::Permissions::_try_exec($ok);
+		if(!$r && $e == Errno::EACCES()) {
+			skip "cannot run scripts in $dir (noexec?)", 3;
+		}
+		is_deeply([ $r, $e ], [ 1, 0 ], 'runs and exits 0');
+		is_deeply([ Test::Permissions::_try_exec($bad) ], [ 0, Errno::ENOEXEC() ], 'non-zero exit: ENOEXEC');
+		is_deeply([ Test::Permissions::_try_exec("$ok.missing") ], [ 0, Errno::ENOENT() ], 'missing: ENOENT');
+		File::Path::remove_tree($p);
+	}
+	local $ENV{PATH} = 'kept';
+	Test::Permissions::_try_exec('/no/such/thing');
+	is($ENV{PATH}, 'kept', "caller's PATH restored");
+};
+
+subtest '_try_unlink' => sub {
+	my $f = File::Spec->catfile($dir, 'unlink-me');
+	Test::Permissions::_make_file($f, '');
+	is_deeply([ Test::Permissions::_try_unlink($f) ], [ 1, 0 ], 'unlinked');
+	is_deeply([ Test::Permissions::_try_unlink($f) ], [ 0, Errno::ENOENT() ], 'already gone: ENOENT');
+	SKIP: {
+		skip 'only meaningful when not root', 2 if $> == 0;
+		Test::Permissions::_make_file($f, '');
+		my $cwd = Cwd::getcwd();
+		throws_ok { Test::Permissions::_try_unlink($f, 65533) } qr/^cannot act as uid 65533$/, 'cannot switch uid: throws';
+		is(Cwd::getcwd(), $cwd, 'working directory restored');
+		unlink $f;
+	}
+	throws_ok { Test::Permissions::_try_unlink("$dir/no/such/f", 1) } qr/^chdir /, 'missing directory: throws';
+	{
+		# Cannot change back to the working directory: throws, after the
+		# uid has been restored.  (Restore the cwd by hand afterwards.)
+		my ($cwd, $euid) = (Cwd::getcwd(), $>);
+		Test::Permissions::_make_file($f, '');
+		my $g = Test::Mockingbird::mock_scoped('Cwd', 'getcwd', sub { "$dir/gone" });
+		throws_ok { Test::Permissions::_try_unlink($f, $>) } qr/^chdir \Q$dir\E\/gone: /, 'cannot change back: throws';
+		is($>, $euid, 'effective uid restored');
+		chdir $cwd or die "$cwd: $!";
+		unlink $f;
+	}
+};
+
+subtest '_can_switch_uid and _give_away' => sub {
+	my $expected = ($^O ne 'MSWin32' && $< == 0 && $> == 0) ? 1 : 0;
+	is(Test::Permissions::_can_switch_uid(), $expected, '_can_switch_uid: real and effective root, not Windows');
+	my $f = File::Spec->catfile($dir, 'give');
+	Test::Permissions::_make_file($f, '');
+	SKIP: {
+		skip 'chown to another user is allowed for root', 1 if $> == 0;
+		dies_ok { Test::Permissions::_give_away($f, 65534) } '_give_away throws when chown is refused';
+	}
+	unlink $f;
+};
+
+subtest '_mode_allows' => sub {
+	my $m = \&Test::Permissions::_mode_allows;
+	my ($uid, $gid) = ($>, (split ' ', $))[0]);
+	SKIP: {
+		skip 'root and Windows take other branches', 6 if $> == 0;
+		is($m->('read', [ 0, 0, 0400, 0, $uid, -1 ], 0), 1, 'owner read bit');
+		is($m->('write', [ 0, 0, 0400, 0, $uid, -1 ], 0), 0, 'owner without write bit');
+		is($m->('exec', [ 0, 0, 0010, 0, -1, $gid ], 0), 1, 'group exec bit');
+		is($m->('read', [ 0, 0, 0004, 0, -1, $gid ], 0), 0, 'group bits used, not other');
+		is($m->('write', [ 0, 0, 0002, 0, -1, -1 ], 0), 1, 'other write bit');
+		is($m->('read', [ 0, 0, 0040, 0, -1, -1 ], 0), 0, 'other bits used, not group');
+	}
+	SKIP: {
+		skip 'root branch', 4 unless $> == 0 && $^O ne 'MSWin32';
+		is($m->('read', [ 0, 0, 0, 0, 1, 1 ], 0), 1, 'root reads mode 0');
+		is($m->('exec', [ 0, 0, 0600, 0, 1, 1 ], 0), 0, 'root cannot run a file with no x bit');
+		is($m->('exec', [ 0, 0, 0001, 0, 1, 1 ], 0), 1, '... but can with any x bit');
+		is($m->('exec', [ 0, 0, 0, 0, 1, 1 ], 1), 1, 'root searches any directory');
+	}
+};
+
+subtest '_access' => sub {
+	my $f = File::Spec->catfile($dir, 'access');
+	Test::Permissions::_make_file($f, '');
+	chmod 0600, $f;
+	is(Test::Permissions::_access('read', $f), 1, 'read');
+	is(Test::Permissions::_access('write', $f), 1, 'write');
+	is(Test::Permissions::_access('exec', $f), 0, 'exec') unless $> == 0 || $^O eq 'MSWin32';
+	unlink $f;
+};
+
+subtest '_untaint and _chmod_error' => sub {
+	is(Test::Permissions::_untaint("a\nb"), "a\nb", '_untaint keeps the whole string');
+	my $f = File::Spec->catfile($dir, 'chm');
+	Test::Permissions::_make_file($f, '');
+	is(Test::Permissions::_chmod_error($f, 0600), undef, '_chmod_error: success');
+	like(Test::Permissions::_chmod_error("$f.none", 0600), qr/chmod/, '_chmod_error: failure text');
+	unlink $f;
+};
+
+subtest '_cache_key' => sub {
+	my $k = \&Test::Permissions::_cache_key;
+	my $key = $k->('read', $dir);
+	my ($euid, $egids) = ($>, $));
+	is($key, join("\0", 'read', $euid, $egids, "dir:$dir"), 'kind, euid, egids, directory');
+	Test::Permissions::set_cache_scope('device');
+	like($k->('read', $dir), qr/\0dev:\d+$/, 'device scope');
+	like($k->('read', "$dir/missing"), qr/\0dir:/, 'device scope falls back to the directory when stat fails');
+	Test::Permissions::set_cache_scope('directory');
 };
 
 done_testing();
