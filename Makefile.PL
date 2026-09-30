@@ -71,7 +71,11 @@ WriteMakefile(
 				url => 'git://github.com/nigelhorne/Test-Permissions.git',
 				web => 'https://github.com/nigelhorne/Test-Permissions',
 			}, bugtracker => {
-				web => 'https://github.com/nigelhorne/Test-Permissions/issues',
+				web => 'https://rt.cpan.org/Public/Dist/Display.html?Name=Test-Permissions',
+				url => 'https://rt.cpan.org/Public/Dist/Display.html?Name=Test-Permissions',
+				# web => 'https://github.com/nigelhorne/Test-Permissions/issues',
+				# url => 'https://github.com/nigelhorne/Test-Permissions/issues',
+				mailto => 'bug-Test-Permissions@rt.cpan.org'
 			}
 		},
 	},
