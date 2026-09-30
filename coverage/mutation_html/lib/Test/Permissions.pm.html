@@ -2634,445 +2634,448 @@ Approximate LCSAJ segments: 199<br>
 </span><span class=""> 2293: 
 </span><span class=""> 2294: # _make_file
 </span><span class=""> 2295: #
-</span><span class=""> 2296: # Purpose:  Create a file with the given content.  Setup step: autodie.
-</span><span class=""> 2297: # Entry:    $path; $content.
-</span><span class=""> 2298: # Exit:     Nothing useful.  Throws on failure (close reports write errors).
-</span><span class=""> 2299: sub _make_file {
-</span><span class=""> 2300: 	my ($path, $content) = @_;
-</span><span class=""> 2301: 	open(my $fh, $OPEN_TRUNCATE, $path);
-</span><span class=""> 2302: 	print {$fh} $content if length $content;
-</span><span class=""> 2303: 	close $fh;
-</span><span class=""> 2304: 	return;
-</span><span class=""> 2305: }
-</span><span class=""> 2306: 
-</span><span class=""> 2307: # _mode_allows
-</span><span class=""> 2308: #
-</span><span class=""> 2309: # Purpose:  What the mode bits alone say about $kind access for the
-</span><span class=""> 2310: #           effective uid and groups (acl_denies).  Root may read and
-</span><span class=""> 2311: #           write anything, and search any directory, but may run a file
-</span><span class=""> 2312: #           only if some execute bit is set.  On Windows, where $&gt; is
-</span><span class=""> 2313: #           always 0, the owner bits decide.
-</span><span class=""> 2314: # Entry:    $kind - read, write or exec; $stat - arrayref from stat;
-</span><span class=""> 2315: #           $is_dir - true for a directory.
-</span><span class=""> 2316: # Exit:     1 or 0.
-</span><span class=""> 2317: sub _mode_allows {
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">2318 → 2322 → 2326</span></span> 2318: 	my ($kind, $stat, $is_dir) = @_;
-</span><span class=""> 2319: 	my $mode = $stat-&gt;[$STAT_MODE];
-</span><span class=""> 2320: 	my (undef, $euid) = _uids();
-</span><span class=""> 2321: 
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2322: 	if($euid == $ROOT_UID &amp;&amp; $^O ne &#39;MSWin32&#39;) {
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2323: 		return 1 unless $kind eq &#39;exec&#39;;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2324: 		return $is_dir || ($mode &amp; $ANY_EXEC) ? 1 : 0;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2325: 	}
-</span><span class=""> 2326: 	my %group = map { $_ =&gt; 1 } split &#39; &#39;, $);
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2327: 	my $shift = $stat-&gt;[$STAT_UID] == $euid ? $OWNER_SHIFT
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 2328: 		: $group{ $stat-&gt;[$STAT_GID] } ? $GROUP_SHIFT
-</span><span class=""> 2329: 		: $OTHER_SHIFT;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2330: 	return ($mode &gt;&gt; $shift) &amp; $ACCESS_BIT{$kind} ? 1 : 0;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2331: }
-</span><span class=""> 2332: 
-</span><span class=""> 2333: # -----------------------------------------------------------------------
-</span><span class=""> 2334: # Seams: every probe step goes through one of these, so that tests can
-</span><span class=""> 2335: # simulate any environment by mocking them.
+</span><span class=""> 2296: # Purpose:  Create a file with exactly the given bytes (binmode: on
+</span><span class=""> 2297: #           Windows, text mode would turn the script&#39;s &quot;\n&quot; into &quot;\r\n&quot;).
+</span><span class=""> 2298: #           Setup step: autodie.
+</span><span class=""> 2299: # Entry:    $path; $content.
+</span><span class=""> 2300: # Exit:     Nothing useful.  Throws on failure (close reports write errors).
+</span><span class=""> 2301: sub _make_file {
+</span><span class=""> 2302: 	my ($path, $content) = @_;
+</span><span class=""> 2303: 	open(my $fh, $OPEN_TRUNCATE, $path);
+</span><span class=""> 2304: 	binmode $fh;
+</span><span class=""> 2305: 	print {$fh} $content if length $content;
+</span><span class=""> 2306: 	close $fh;
+</span><span class=""> 2307: 	return;
+</span><span class=""> 2308: }
+</span><span class=""> 2309: 
+</span><span class=""> 2310: # _mode_allows
+</span><span class=""> 2311: #
+</span><span class=""> 2312: # Purpose:  What the mode bits alone say about $kind access for the
+</span><span class=""> 2313: #           effective uid and groups (acl_denies).  Root may read and
+</span><span class=""> 2314: #           write anything, and search any directory, but may run a file
+</span><span class=""> 2315: #           only if some execute bit is set.  On Windows, where $&gt; is
+</span><span class=""> 2316: #           always 0, the owner bits decide.
+</span><span class=""> 2317: # Entry:    $kind - read, write or exec; $stat - arrayref from stat;
+</span><span class=""> 2318: #           $is_dir - true for a directory.
+</span><span class=""> 2319: # Exit:     1 or 0.
+</span><span class=""> 2320: sub _mode_allows {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">2321 → 2325 → 2329</span></span> 2321: 	my ($kind, $stat, $is_dir) = @_;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2322: 	my $mode = $stat-&gt;[$STAT_MODE];
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2323: 	my (undef, $euid) = _uids();
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2324: 
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2325: 	if($euid == $ROOT_UID &amp;&amp; $^O ne &#39;MSWin32&#39;) {
+</span><span class=""> 2326: 		return 1 unless $kind eq &#39;exec&#39;;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2327: 		return $is_dir || ($mode &amp; $ANY_EXEC) ? 1 : 0;
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 2328: 	}
+</span><span class=""> 2329: 	my %group = map { $_ =&gt; 1 } split &#39; &#39;, $);
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2330: 	my $shift = $stat-&gt;[$STAT_UID] == $euid ? $OWNER_SHIFT
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2331: 		: $group{ $stat-&gt;[$STAT_GID] } ? $GROUP_SHIFT
+</span><span class=""> 2332: 		: $OTHER_SHIFT;
+</span><span class=""> 2333: 	return ($mode &gt;&gt; $shift) &amp; $ACCESS_BIT{$kind} ? 1 : 0;
+</span><span class=""> 2334: }
+</span><span class=""> 2335: 
 </span><span class=""> 2336: # -----------------------------------------------------------------------
-</span><span class=""> 2337: 
-</span><span class=""> 2338: # _make_probe_dir
-</span><span class=""> 2339: #
-</span><span class=""> 2340: # Purpose:  Create the probe directory P inside $dir, mode 0700.
-</span><span class=""> 2341: #           CLEANUP is only a fallback; _cleanup removes P explicitly.
-</span><span class=""> 2342: # Entry:    $dir - the target directory (untainted).
-</span><span class=""> 2343: # Exit:     The path of P.  Throws on failure.
-</span><span class=""> 2344: sub _make_probe_dir {
-</span><span class=""> 2345: 	my ($dir) = @_;
-</span><span class=""> 2346: 	my $probe_dir = File::Temp::tempdir($PROBE_TEMPLATE, DIR =&gt; $dir, CLEANUP =&gt; 1);
-</span><span class=""> 2347: 	_set_mode($probe_dir, $MODE_DIR_RWX);
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2348: 	return $probe_dir;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2349: }
-</span><span class=""> 2350: 
-</span><span class=""> 2351: # _try_open
-</span><span class=""> 2352: #
-</span><span class=""> 2353: # Purpose:  The attempt for read, write and create: open a file.
-</span><span class=""> 2354: # Entry:    $path; $mode - an open() mode.
-</span><span class=""> 2355: # Exit:     (1, 0) if it opened (the handle is closed again), else
-</span><span class=""> 2356: #           (0, errno).  Never throws.
-</span><span class=""> 2357: sub _try_open {
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">2358 → 2360 → 2364</span></span> 2358: 	my ($path, $mode) = @_;
-</span><span class=""> 2359: 	no autodie;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2360: 	if(open my $fh, $mode, $path) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 2361: 		close $fh;
-</span><span class=""> 2362: 		return (1, 0);
-</span><span class=""> 2363: 	}
-</span><span class=""> 2364: 	return (0, 0 + $!);
-</span><span class=""> 2365: }
-</span><span class=""> 2366: 
-</span><span class=""> 2367: # _try_stat
-</span><span class=""> 2368: #
-</span><span class=""> 2369: # Purpose:  The attempt for search: stat a file.
-</span><span class=""> 2370: # Entry:    $path.
-</span><span class=""> 2371: # Exit:     (1, 0) or (0, errno).  Never throws.
-</span><span class=""> 2372: sub _try_stat {
-</span><span class=""> 2373: 	my ($path) = @_;
-</span><span class=""> 2374: 	no autodie;
-</span><span class=""> 2375: 	my @stat = stat $path;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2376: 	return @stat ? (1, 0) : (0, 0 + $!);
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2377: }
-</span><span class=""> 2378: 
-</span><span class=""> 2379: # _try_exec
-</span><span class=""> 2380: #
-</span><span class=""> 2381: # Purpose:  The attempt for exec: run the probe&#39;s script, without a shell,
-</span><span class=""> 2382: #           with the variables in @UNSAFE_ENV removed (taint mode refuses
-</span><span class=""> 2383: #           to run anything while they are set).
-</span><span class=""> 2384: # Entry:    $path.
-</span><span class=""> 2385: # Exit:     (1, 0) if it ran and exited 0; (0, errno) if it could not be
-</span><span class=""> 2386: #           run; (0, ENOEXEC) if it ran but did not exit 0.  Never throws.
-</span><span class=""> 2387: sub _try_exec {
-</span><span class=""> 2388: 	my ($path) = @_;
-</span><span class=""> 2389: 	no autodie;
-</span><span class=""> 2390: 	no warnings &#39;exec&#39;;	## no critic (TestingAndDebugging::ProhibitNoWarnings) - &quot;Can&#39;t exec&quot; is expected
-</span><span class=""> 2391: 
-</span><span class=""> 2392: 	local %ENV = %ENV;
-</span><span class=""> 2393: 	delete @ENV{@UNSAFE_ENV};
-</span><span class=""> 2394: 	my $status = system { $path } $path;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2395: 	return (0, 0 + $!) if $status == -1;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2396: 	return $? == 0 ? (1, 0) : (0, $ERRNO_BAD_EXIT);
-</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class=""> 2397: }
-</span><span class=""> 2398: 
-</span><span class=""> 2399: # _try_unlink
-</span><span class=""> 2400: #
-</span><span class=""> 2401: # Purpose:  The attempt for delete and sticky: unlink a file, optionally
-</span><span class=""> 2402: #           as another user.  To act as another user it changes directory
-</span><span class=""> 2403: #           to the file&#39;s directory first (as root), then sets the
-</span><span class=""> 2404: #           effective uid only for the unlink of the bare name, so that
-</span><span class=""> 2405: #           the other user needs no access to the directories above.  Both
-</span><span class=""> 2406: #           are restored before it returns.
-</span><span class=""> 2407: # Entry:    $path; $as - a uid to act as, or undef.
-</span><span class=""> 2408: # Exit:     (1, 0) or (0, errno).  Throws only if it cannot change
-</span><span class=""> 2409: #           directory or effective uid, or cannot change back.
-</span><span class=""> 2410: sub _try_unlink {
-</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">2411 → 2414 → 2418</span></span> 2411: 	my ($path, $as) = @_;
-</span><span class=""> 2412: 	no autodie;
-</span><span class=""> 2413: 
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2414: 	if(!defined $as) {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2415: 		return unlink($path) ? (1, 0) : (0, 0 + $!);
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2416: 	}
-</span><span class=""> 2417: 
-</span><span class=""> 2418: 	my ($volume, $directories, $name) = File::Spec-&gt;splitpath($path);
-</span><span class=""> 2419: 	my $dir = File::Spec-&gt;catpath($volume, $directories, q{});
-</span><span class=""> 2420: 	my $cwd = _untaint(Cwd::getcwd());
-</span><span class=""> 2421: 	chdir $dir or die &quot;chdir $dir: $!\n&quot;;	## no critic (ErrorHandling::RequireCarping)
-</span><span class=""> 2422: 
-</span><span class=""> 2423: 	my ($switched, $ok, $errno) = _unlink_as($name, $as);
-</span><span class=""> 2424: 	chdir $cwd or die &quot;chdir $cwd: $!\n&quot;;	## no critic (ErrorHandling::RequireCarping)
-</span><span class=""> 2425: 	die &quot;cannot act as uid $as\n&quot; unless $switched;	## no critic (ErrorHandling::RequireCarping)
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2426: 	return $ok ? (1, 0) : (0, $errno);
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2427: }
-</span><span class=""> 2428: 
-</span><span class=""> 2429: # _unlink_as
-</span><span class=""> 2430: #
-</span><span class=""> 2431: # Purpose:  The privileged core of _try_unlink: set the effective uid,
-</span><span class=""> 2432: #           unlink a name in the current directory, and set it back.
-</span><span class=""> 2433: #           Kept this small because only real root can run it: tests mock
-</span><span class=""> 2434: #           it to reach every other path of _try_unlink.
-</span><span class=""> 2435: # Entry:    $name - a file name in the current directory; $uid.
-</span><span class=""> 2436: # Exit:     ($switched, $ok, $errno): whether the effective uid could be
-</span><span class=""> 2437: #           changed, and if so whether unlink worked and its errno.
-</span><span class=""> 2438: sub _unlink_as {
-</span><span class=""> 2439: 	my ($name, $uid) = @_;
-</span><span class=""> 2440: 	no autodie;
-</span><span class=""> 2441: 	local $&gt; = $uid;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2442: 	return (0) unless $&gt; == $uid;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 2443: 	my $ok = unlink $name;
-</span><span class=""> 2444: 	return (1, $ok, 0 + $!);
-</span><span class=""> 2445: }
-</span><span class=""> 2446: 
-</span><span class=""> 2447: # _can_switch_uid
-</span><span class=""> 2448: #
-</span><span class=""> 2449: # Purpose:  The sticky probe&#39;s precondition: can this process act as
-</span><span class=""> 2450: #           another user?  Only root (real and effective) outside Windows.
-</span><span class=""> 2451: # Entry:    None.
-</span><span class=""> 2452: # Exit:     1 or 0.
-</span><span class=""> 2453: sub _can_switch_uid {
-</span><span class=""> 2454: 	my ($ruid, $euid) = _uids();
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2455: 	return $^O ne &#39;MSWin32&#39; &amp;&amp; $ruid == $ROOT_UID &amp;&amp; $euid == $ROOT_UID ? 1 : 0;
-</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class=""> 2456: }
-</span><span class=""> 2457: 
-</span><span class=""> 2458: # _uids
-</span><span class=""> 2459: #
-</span><span class=""> 2460: # Purpose:  The real and effective uid, through a seam, so that tests can
-</span><span class=""> 2461: #           exercise the root branches without being root.
-</span><span class=""> 2462: # Entry:    None.
-</span><span class=""> 2463: # Exit:     ($&lt;, $&gt;).
-</span><span class=""> 2464: sub _uids {
-</span><span class=""> 2465: 	return ($&lt;, $&gt;);
-</span><span class=""> 2466: }
-</span><span class=""> 2467: 
-</span><span class=""> 2468: # _give_away
-</span><span class=""> 2469: #
-</span><span class=""> 2470: # Purpose:  Give a file to another user (sticky setup).  autodie.
-</span><span class=""> 2471: # Entry:    $path; $uid.
-</span><span class=""> 2472: # Exit:     Nothing.  Throws on failure.
-</span><span class=""> 2473: sub _give_away {
-</span><span class=""> 2474: 	my ($path, $uid) = @_;
-</span><span class=""> 2475: 	chown $uid, -1, $path;
-</span><span class=""> 2476: 	return;
-</span><span class=""> 2477: }
-</span><span class=""> 2478: 
-</span><span class=""> 2479: # _access
-</span><span class=""> 2480: #
-</span><span class=""> 2481: # Purpose:  What the system says about $kind access to $path for this
-</span><span class=""> 2482: #           process, using access(2), which takes ACLs into account
-</span><span class=""> 2483: #           (acl_denies).
-</span><span class=""> 2484: # Entry:    $kind - read, write or exec; $path.
-</span><span class=""> 2485: # Exit:     1 or 0.
-</span><span class=""> 2486: sub _access {
-</span><span class=""> 2487: 	my ($kind, $path) = @_;
-</span><span class=""> 2488: 	use filetest &#39;access&#39;;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2489: 	return ($kind eq &#39;read&#39; ? -r $path : $kind eq &#39;write&#39; ? -w $path : -x $path) ? 1 : 0;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2490: }
-</span><span class=""> 2491: 
-</span><span class=""> 2492: # _set_mode
-</span><span class=""> 2493: #
-</span><span class=""> 2494: # Purpose:  chmod one path.
-</span><span class=""> 2495: # Entry:    $path; $mode.
-</span><span class=""> 2496: # Exit:     1.  Throws (autodie) on failure.
-</span><span class=""> 2497: sub _set_mode {
-</span><span class=""> 2498: 	my ($path, $mode) = @_;
-</span><span class=""> 2499: 	chmod $mode, $path;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2500: 	return 1;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2501: }
-</span><span class=""> 2502: 
-</span><span class=""> 2503: # _mode_of
-</span><span class=""> 2504: #
-</span><span class=""> 2505: # Purpose:  The permission bits of a path.
-</span><span class=""> 2506: # Entry:    $path.
-</span><span class=""> 2507: # Exit:     mode &amp; 07777, or undef if stat fails ($! says why).
-</span><span class=""> 2508: sub _mode_of {
-</span><span class=""> 2509: 	my ($path) = @_;
-</span><span class=""> 2510: 	my @stat = stat $path;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2511: 	return @stat ? $stat[$STAT_MODE] &amp; $MODE_BITS : undef;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2512: }
-</span><span class=""> 2513: 
-</span><span class=""> 2514: =head1 FAILURE POLICY
-</span><span class=""> 2515: 
-</span><span class=""> 2516: =over 4
-</span><span class=""> 2517: 
-</span><span class=""> 2518: =item * B&lt;Caller errors croak&gt;: an unknown kind, a C&lt;dir&gt; that is not an
-</span><span class=""> 2519: existing directory, a C&lt;path&gt; that does not exist, bad arguments
-</span><span class=""> 2520: (reported by Params::Validate::Strict or Params::Get), or an unknown
-</span><span class=""> 2521: message key.  C&lt;with_revoked&gt; also croaks if it cannot change or restore
-</span><span class=""> 2522: the mode it was asked to change.
-</span><span class=""> 2523: 
-</span><span class=""> 2524: =item * B&lt;Probe errors never escape.&gt;  Anything that goes wrong inside a
-</span><span class=""> 2525: probe becomes a 0 answer with a reason.  A helper whose job is to decide
-</span><span class=""> 2526: whether to skip must never be the thing that fails your test file.
-</span><span class=""> 2527: 
-</span><span class=""> 2528: =item * B&lt;No warnings.&gt;  Many suites run under L&lt;Test::Warnings&gt; or C&lt;-W&gt;,
-</span><span class=""> 2529: so a warning would itself fail them.  Use L&lt;/why_not(kind, dir)&gt; for
-</span><span class=""> 2530: diagnostics.
-</span><span class=""> 2531: 
-</span><span class=""> 2532: =item * A failed restore or cleanup makes the answer 0, and is added to
-</span><span class=""> 2533: the reason (C&lt;reason_cleanup_failed&gt;).
+</span><span class=""> 2337: # Seams: every probe step goes through one of these, so that tests can
+</span><span class=""> 2338: # simulate any environment by mocking them.
+</span><span class=""> 2339: # -----------------------------------------------------------------------
+</span><span class=""> 2340: 
+</span><span class=""> 2341: # _make_probe_dir
+</span><span class=""> 2342: #
+</span><span class=""> 2343: # Purpose:  Create the probe directory P inside $dir, mode 0700.
+</span><span class=""> 2344: #           CLEANUP is only a fallback; _cleanup removes P explicitly.
+</span><span class=""> 2345: # Entry:    $dir - the target directory (untainted).
+</span><span class=""> 2346: # Exit:     The path of P.  Throws on failure.
+</span><span class=""> 2347: sub _make_probe_dir {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2348: 	my ($dir) = @_;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2349: 	my $probe_dir = File::Temp::tempdir($PROBE_TEMPLATE, DIR =&gt; $dir, CLEANUP =&gt; 1);
+</span><span class=""> 2350: 	_set_mode($probe_dir, $MODE_DIR_RWX);
+</span><span class=""> 2351: 	return $probe_dir;
+</span><span class=""> 2352: }
+</span><span class=""> 2353: 
+</span><span class=""> 2354: # _try_open
+</span><span class=""> 2355: #
+</span><span class=""> 2356: # Purpose:  The attempt for read, write and create: open a file.
+</span><span class=""> 2357: # Entry:    $path; $mode - an open() mode.
+</span><span class=""> 2358: # Exit:     (1, 0) if it opened (the handle is closed again), else
+</span><span class=""> 2359: #           (0, errno).  Never throws.
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2360: sub _try_open {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">2361 → 2363 → 2367</span></span> 2361: 	my ($path, $mode) = @_;
+</span><span class=""> 2362: 	no autodie;
+</span><span class=""> 2363: 	if(open my $fh, $mode, $path) {
+</span><span class=""> 2364: 		close $fh;
+</span><span class=""> 2365: 		return (1, 0);
+</span><span class=""> 2366: 	}
+</span><span class=""> 2367: 	return (0, 0 + $!);
+</span><span class=""> 2368: }
+</span><span class=""> 2369: 
+</span><span class=""> 2370: # _try_stat
+</span><span class=""> 2371: #
+</span><span class=""> 2372: # Purpose:  The attempt for search: stat a file.
+</span><span class=""> 2373: # Entry:    $path.
+</span><span class=""> 2374: # Exit:     (1, 0) or (0, errno).  Never throws.
+</span><span class=""> 2375: sub _try_stat {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2376: 	my ($path) = @_;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2377: 	no autodie;
+</span><span class=""> 2378: 	my @stat = stat $path;
+</span><span class=""> 2379: 	return @stat ? (1, 0) : (0, 0 + $!);
+</span><span class=""> 2380: }
+</span><span class=""> 2381: 
+</span><span class=""> 2382: # _try_exec
+</span><span class=""> 2383: #
+</span><span class=""> 2384: # Purpose:  The attempt for exec: run the probe&#39;s script, without a shell,
+</span><span class=""> 2385: #           with the variables in @UNSAFE_ENV removed (taint mode refuses
+</span><span class=""> 2386: #           to run anything while they are set).
+</span><span class=""> 2387: # Entry:    $path.
+</span><span class=""> 2388: # Exit:     (1, 0) if it ran and exited 0; (0, errno) if it could not be
+</span><span class=""> 2389: #           run; (0, ENOEXEC) if it ran but did not exit 0.  Never throws.
+</span><span class=""> 2390: sub _try_exec {
+</span><span class=""> 2391: 	my ($path) = @_;
+</span><span class=""> 2392: 	no autodie;
+</span><span class=""> 2393: 	no warnings &#39;exec&#39;;	## no critic (TestingAndDebugging::ProhibitNoWarnings) - &quot;Can&#39;t exec&quot; is expected
+</span><span class=""> 2394: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2395: 	local %ENV = %ENV;
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2396: 	delete @ENV{@UNSAFE_ENV};
+</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class=""> 2397: 	my $status = system { $path } $path;
+</span><span class=""> 2398: 	return (0, 0 + $!) if $status == -1;
+</span><span class=""> 2399: 	return $? == 0 ? (1, 0) : (0, $ERRNO_BAD_EXIT);
+</span><span class=""> 2400: }
+</span><span class=""> 2401: 
+</span><span class=""> 2402: # _try_unlink
+</span><span class=""> 2403: #
+</span><span class=""> 2404: # Purpose:  The attempt for delete and sticky: unlink a file, optionally
+</span><span class=""> 2405: #           as another user.  To act as another user it changes directory
+</span><span class=""> 2406: #           to the file&#39;s directory first (as root), then sets the
+</span><span class=""> 2407: #           effective uid only for the unlink of the bare name, so that
+</span><span class=""> 2408: #           the other user needs no access to the directories above.  Both
+</span><span class=""> 2409: #           are restored before it returns.
+</span><span class=""> 2410: # Entry:    $path; $as - a uid to act as, or undef.
+</span><span class=""> 2411: # Exit:     (1, 0) or (0, errno).  Throws only if it cannot change
+</span><span class=""> 2412: #           directory or effective uid, or cannot change back.
+</span><span class=""> 2413: sub _try_unlink {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">2414 → 2417 → 2421</span></span> 2414: 	my ($path, $as) = @_;
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2415: 	no autodie;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2416: 
+</span><span class=""> 2417: 	if(!defined $as) {
+</span><span class=""> 2418: 		return unlink($path) ? (1, 0) : (0, 0 + $!);
+</span><span class=""> 2419: 	}
+</span><span class=""> 2420: 
+</span><span class=""> 2421: 	my ($volume, $directories, $name) = File::Spec-&gt;splitpath($path);
+</span><span class=""> 2422: 	my $dir = File::Spec-&gt;catpath($volume, $directories, q{});
+</span><span class=""> 2423: 	my $cwd = _untaint(Cwd::getcwd());
+</span><span class=""> 2424: 	chdir $dir or die &quot;chdir $dir: $!\n&quot;;	## no critic (ErrorHandling::RequireCarping)
+</span><span class=""> 2425: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2426: 	my ($switched, $ok, $errno) = _unlink_as($name, $as);
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2427: 	chdir $cwd or die &quot;chdir $cwd: $!\n&quot;;	## no critic (ErrorHandling::RequireCarping)
+</span><span class=""> 2428: 	die &quot;cannot act as uid $as\n&quot; unless $switched;	## no critic (ErrorHandling::RequireCarping)
+</span><span class=""> 2429: 	return $ok ? (1, 0) : (0, $errno);
+</span><span class=""> 2430: }
+</span><span class=""> 2431: 
+</span><span class=""> 2432: # _unlink_as
+</span><span class=""> 2433: #
+</span><span class=""> 2434: # Purpose:  The privileged core of _try_unlink: set the effective uid,
+</span><span class=""> 2435: #           unlink a name in the current directory, and set it back.
+</span><span class=""> 2436: #           Kept this small because only real root can run it: tests mock
+</span><span class=""> 2437: #           it to reach every other path of _try_unlink.
+</span><span class=""> 2438: # Entry:    $name - a file name in the current directory; $uid.
+</span><span class=""> 2439: # Exit:     ($switched, $ok, $errno): whether the effective uid could be
+</span><span class=""> 2440: #           changed, and if so whether unlink worked and its errno.
+</span><span class=""> 2441: sub _unlink_as {
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2442: 	my ($name, $uid) = @_;
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 2443: 	no autodie;
+</span><span class=""> 2444: 	local $&gt; = $uid;
+</span><span class=""> 2445: 	return (0) unless $&gt; == $uid;
+</span><span class=""> 2446: 	my $ok = unlink $name;
+</span><span class=""> 2447: 	return (1, $ok, 0 + $!);
+</span><span class=""> 2448: }
+</span><span class=""> 2449: 
+</span><span class=""> 2450: # _can_switch_uid
+</span><span class=""> 2451: #
+</span><span class=""> 2452: # Purpose:  The sticky probe&#39;s precondition: can this process act as
+</span><span class=""> 2453: #           another user?  Only root (real and effective) outside Windows.
+</span><span class=""> 2454: # Entry:    None.
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2455: # Exit:     1 or 0.
+</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class=""> 2456: sub _can_switch_uid {
+</span><span class=""> 2457: 	my ($ruid, $euid) = _uids();
+</span><span class=""> 2458: 	return $^O ne &#39;MSWin32&#39; &amp;&amp; $ruid == $ROOT_UID &amp;&amp; $euid == $ROOT_UID ? 1 : 0;
+</span><span class=""> 2459: }
+</span><span class=""> 2460: 
+</span><span class=""> 2461: # _uids
+</span><span class=""> 2462: #
+</span><span class=""> 2463: # Purpose:  The real and effective uid, through a seam, so that tests can
+</span><span class=""> 2464: #           exercise the root branches without being root.
+</span><span class=""> 2465: # Entry:    None.
+</span><span class=""> 2466: # Exit:     ($&lt;, $&gt;).
+</span><span class=""> 2467: sub _uids {
+</span><span class=""> 2468: 	return ($&lt;, $&gt;);
+</span><span class=""> 2469: }
+</span><span class=""> 2470: 
+</span><span class=""> 2471: # _give_away
+</span><span class=""> 2472: #
+</span><span class=""> 2473: # Purpose:  Give a file to another user (sticky setup).  autodie.
+</span><span class=""> 2474: # Entry:    $path; $uid.
+</span><span class=""> 2475: # Exit:     Nothing.  Throws on failure.
+</span><span class=""> 2476: sub _give_away {
+</span><span class=""> 2477: 	my ($path, $uid) = @_;
+</span><span class=""> 2478: 	chown $uid, -1, $path;
+</span><span class=""> 2479: 	return;
+</span><span class=""> 2480: }
+</span><span class=""> 2481: 
+</span><span class=""> 2482: # _access
+</span><span class=""> 2483: #
+</span><span class=""> 2484: # Purpose:  What the system says about $kind access to $path for this
+</span><span class=""> 2485: #           process, using access(2), which takes ACLs into account
+</span><span class=""> 2486: #           (acl_denies).
+</span><span class=""> 2487: # Entry:    $kind - read, write or exec; $path.
+</span><span class=""> 2488: # Exit:     1 or 0.
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2489: sub _access {
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2490: 	my ($kind, $path) = @_;
+</span><span class=""> 2491: 	use filetest &#39;access&#39;;
+</span><span class=""> 2492: 	return ($kind eq &#39;read&#39; ? -r $path : $kind eq &#39;write&#39; ? -w $path : -x $path) ? 1 : 0;
+</span><span class=""> 2493: }
+</span><span class=""> 2494: 
+</span><span class=""> 2495: # _set_mode
+</span><span class=""> 2496: #
+</span><span class=""> 2497: # Purpose:  chmod one path.
+</span><span class=""> 2498: # Entry:    $path; $mode.
+</span><span class=""> 2499: # Exit:     1.  Throws (autodie) on failure.
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2500: sub _set_mode {
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2501: 	my ($path, $mode) = @_;
+</span><span class=""> 2502: 	chmod $mode, $path;
+</span><span class=""> 2503: 	return 1;
+</span><span class=""> 2504: }
+</span><span class=""> 2505: 
+</span><span class=""> 2506: # _mode_of
+</span><span class=""> 2507: #
+</span><span class=""> 2508: # Purpose:  The permission bits of a path.
+</span><span class=""> 2509: # Entry:    $path.
+</span><span class=""> 2510: # Exit:     mode &amp; 07777, or undef if stat fails ($! says why).
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2511: sub _mode_of {
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2512: 	my ($path) = @_;
+</span><span class=""> 2513: 	my @stat = stat $path;
+</span><span class=""> 2514: 	return @stat ? $stat[$STAT_MODE] &amp; $MODE_BITS : undef;
+</span><span class=""> 2515: }
+</span><span class=""> 2516: 
+</span><span class=""> 2517: =head1 FAILURE POLICY
+</span><span class=""> 2518: 
+</span><span class=""> 2519: =over 4
+</span><span class=""> 2520: 
+</span><span class=""> 2521: =item * B&lt;Caller errors croak&gt;: an unknown kind, a C&lt;dir&gt; that is not an
+</span><span class=""> 2522: existing directory, a C&lt;path&gt; that does not exist, bad arguments
+</span><span class=""> 2523: (reported by Params::Validate::Strict or Params::Get), or an unknown
+</span><span class=""> 2524: message key.  C&lt;with_revoked&gt; also croaks if it cannot change or restore
+</span><span class=""> 2525: the mode it was asked to change.
+</span><span class=""> 2526: 
+</span><span class=""> 2527: =item * B&lt;Probe errors never escape.&gt;  Anything that goes wrong inside a
+</span><span class=""> 2528: probe becomes a 0 answer with a reason.  A helper whose job is to decide
+</span><span class=""> 2529: whether to skip must never be the thing that fails your test file.
+</span><span class=""> 2530: 
+</span><span class=""> 2531: =item * B&lt;No warnings.&gt;  Many suites run under L&lt;Test::Warnings&gt; or C&lt;-W&gt;,
+</span><span class=""> 2532: so a warning would itself fail them.  Use L&lt;/why_not(kind, dir)&gt; for
+</span><span class=""> 2533: diagnostics.
 </span><span class=""> 2534: 
-</span><span class=""> 2535: =back
-</span><span class=""> 2536: 
-</span><span class=""> 2537: =head1 LIMITATIONS
-</span><span class=""> 2538: 
-</span><span class=""> 2539: =over 4
-</span><span class=""> 2540: 
-</span><span class=""> 2541: =item * Results are per directory (or per device, see
-</span><span class=""> 2542: L&lt;/set_cache_scope(scope)&gt;), per effective user and groups, and per
-</span><span class=""> 2543: process.
-</span><span class=""> 2544: 
-</span><span class=""> 2545: =item * A directory whose permissions or mount change after the first
-</span><span class=""> 2546: call keeps its cached answer until L&lt;/clear_cache()&gt;.
+</span><span class=""> 2535: =item * A failed restore or cleanup makes the answer 0, and is added to
+</span><span class=""> 2536: the reason (C&lt;reason_cleanup_failed&gt;).
+</span><span class=""> 2537: 
+</span><span class=""> 2538: =back
+</span><span class=""> 2539: 
+</span><span class=""> 2540: =head1 LIMITATIONS
+</span><span class=""> 2541: 
+</span><span class=""> 2542: =over 4
+</span><span class=""> 2543: 
+</span><span class=""> 2544: =item * Results are per directory (or per device, see
+</span><span class=""> 2545: L&lt;/set_cache_scope(scope)&gt;), per effective user and groups, and per
+</span><span class=""> 2546: process.
 </span><span class=""> 2547: 
-</span><span class=""> 2548: =item * Probing needs write access to C&lt;dir&gt;: the probe creates a scratch
-</span><span class=""> 2549: directory there.  Without it the answer is 0 (C&lt;reason_setup_failed&gt;).
+</span><span class=""> 2548: =item * A directory whose permissions or mount change after the first
+</span><span class=""> 2549: call keeps its cached answer until L&lt;/clear_cache()&gt;.
 </span><span class=""> 2550: 
-</span><span class=""> 2551: =item * The probes change only mode bits.  L&lt;/acl_denies(kind, path)&gt;
-</span><span class=""> 2552: detects an ACL that denies access to an existing path, but no probe
-</span><span class=""> 2553: creates ACLs.
-</span><span class=""> 2554: 
-</span><span class=""> 2555: =item * The mode check after C&lt;chmod&gt; compares the owner&#39;s permission
-</span><span class=""> 2556: bits (all bits for C&lt;sticky&gt;), because the probe runs as the owner of its
-</span><span class=""> 2557: scratch files, and because perl on Windows reports a read-only file as
-</span><span class=""> 2558: 0444.
-</span><span class=""> 2559: 
-</span><span class=""> 2560: =item * The C&lt;sticky&gt; probe needs root, and assumes that uids 65533 and
-</span><span class=""> 2561: 65534 can own files.  In a user namespace that maps only one uid (such as
-</span><span class=""> 2562: C&lt;unshare -r&gt;), giving the file away fails and the answer is 0 with
-</span><span class=""> 2563: C&lt;reason_setup_failed&gt;.
-</span><span class=""> 2564: 
-</span><span class=""> 2565: =item * Reasons embed the system&#39;s error text in the current locale.
-</span><span class=""> 2566: 
-</span><span class=""> 2567: =item * Needs perl 5.26 or later, because Params::Validate::Strict does.
-</span><span class=""> 2568: 
-</span><span class=""> 2569: =back
-</span><span class=""> 2570: 
-</span><span class=""> 2571: =head1 SEE ALSO
-</span><span class=""> 2572: 
-</span><span class=""> 2573: L&lt;Test::More&gt;, L&lt;Test2::V0&gt;, L&lt;Test::Warnings&gt;, L&lt;File::Temp&gt;,
-</span><span class=""> 2574: L&lt;filetest&gt;.
+</span><span class=""> 2551: =item * Probing needs write access to C&lt;dir&gt;: the probe creates a scratch
+</span><span class=""> 2552: directory there.  Without it the answer is 0 (C&lt;reason_setup_failed&gt;).
+</span><span class=""> 2553: 
+</span><span class=""> 2554: =item * The probes change only mode bits.  L&lt;/acl_denies(kind, path)&gt;
+</span><span class=""> 2555: detects an ACL that denies access to an existing path, but no probe
+</span><span class=""> 2556: creates ACLs.
+</span><span class=""> 2557: 
+</span><span class=""> 2558: =item * The mode check after C&lt;chmod&gt; compares the owner&#39;s permission
+</span><span class=""> 2559: bits (all bits for C&lt;sticky&gt;), because the probe runs as the owner of its
+</span><span class=""> 2560: scratch files, and because perl on Windows reports a read-only file as
+</span><span class=""> 2561: 0444.
+</span><span class=""> 2562: 
+</span><span class=""> 2563: =item * The C&lt;sticky&gt; probe needs root, and assumes that uids 65533 and
+</span><span class=""> 2564: 65534 can own files.  In a user namespace that maps only one uid (such as
+</span><span class=""> 2565: C&lt;unshare -r&gt;), giving the file away fails and the answer is 0 with
+</span><span class=""> 2566: C&lt;reason_setup_failed&gt;.
+</span><span class=""> 2567: 
+</span><span class=""> 2568: =item * Reasons embed the system&#39;s error text in the current locale.
+</span><span class=""> 2569: 
+</span><span class=""> 2570: =item * Needs perl 5.26 or later, because Params::Validate::Strict does.
+</span><span class=""> 2571: 
+</span><span class=""> 2572: =back
+</span><span class=""> 2573: 
+</span><span class=""> 2574: =head1 SEE ALSO
 </span><span class=""> 2575: 
-</span><span class=""> 2576: =head1 SUPPORT
-</span><span class=""> 2577: 
-</span><span class=""> 2578: This module is provided as-is without any warranty.
-</span><span class=""> 2579: 
-</span><span class=""> 2580: Please report bugs and feature requests at
-</span><span class=""> 2581: L&lt;https://github.com/nigelhorne/Test-Permissions/issues&gt;.
+</span><span class=""> 2576: L&lt;Test::More&gt;, L&lt;Test2::V0&gt;, L&lt;Test::Warnings&gt;, L&lt;File::Temp&gt;,
+</span><span class=""> 2577: L&lt;filetest&gt;.
+</span><span class=""> 2578: 
+</span><span class=""> 2579: =head1 SUPPORT
+</span><span class=""> 2580: 
+</span><span class=""> 2581: This module is provided as-is without any warranty.
 </span><span class=""> 2582: 
-</span><span class=""> 2583: =head1 AUTHOR
-</span><span class=""> 2584: 
-</span><span class=""> 2585: Nigel Horne E&lt;lt&gt;njh@nigelhorne.comE&lt;gt&gt;
-</span><span class=""> 2586: 
-</span><span class=""> 2587: =head1 STATE DIAGRAM
-</span><span class=""> 2588: 
-</span><span class=""> 2589: The cache, for one key: a kind, the effective uid and groups, and the
-</span><span class=""> 2590: canonical directory (or, with the C&lt;device&gt; scope, its device).
-</span><span class=""> 2591: C&lt;can_revoke&gt;, C&lt;can_revoke_*&gt;, C&lt;why_not&gt;, C&lt;skip_unless_can_revoke&gt; and
-</span><span class=""> 2592: C&lt;permissions_report&gt; are all &quot;queries&quot;.  A call that croaks does not
-</span><span class=""> 2593: change the state.
-</span><span class=""> 2594: 
-</span><span class=""> 2595: 	                   query: probe, answer 1
-</span><span class=""> 2596: 	    +---------+ ---------------------------&gt; +------------+
-</span><span class=""> 2597: 	    |  EMPTY  |                              | CACHED_YES | --+ query: no probe
-</span><span class=""> 2598: 	    +---------+ ---------------------------&gt; +------------+ &lt;-+
-</span><span class=""> 2599: 	      ^  ^  ^      query: probe, answer 0          |
-</span><span class=""> 2600: 	      |  |  |                                      |
-</span><span class=""> 2601: 	      |  |  +------------- clear_cache ------------+
-</span><span class=""> 2602: 	      |  |                                      +-----------+
-</span><span class=""> 2603: 	      |  +-------------- clear_cache ---------- | CACHED_NO | --+ query: no probe
-</span><span class=""> 2604: 	      |                                         +-----------+ &lt;-+
-</span><span class=""> 2605: 	      +-- clear_cache (from EMPTY: no change)
-</span><span class=""> 2606: 
-</span><span class=""> 2607: There is no edge between CACHED_YES and CACHED_NO: a cached answer stays
-</span><span class=""> 2608: until C&lt;clear_cache&gt;, even if the environment changes.  C&lt;set_messages&gt;
-</span><span class=""> 2609: changes no state; a cached reason keeps the wording it was given when the
-</span><span class=""> 2610: probe ran.  C&lt;set_cache_scope&gt; and a change of effective uid or groups do
-</span><span class=""> 2611: not change any key&#39;s state; they change which key later queries use.
-</span><span class=""> 2612: 
-</span><span class=""> 2613: =encoding utf-8
-</span><span class=""> 2614: 
-</span><span class=""> 2615: =head1 FORMAL SPECIFICATION
-</span><span class=""> 2616: 
-</span><span class=""> 2617: The specification below uses Z notation.  The English sections above are
-</span><span class=""> 2618: the normative description for everyday use.
+</span><span class=""> 2583: Please report bugs and feature requests at
+</span><span class=""> 2584: L&lt;https://github.com/nigelhorne/Test-Permissions/issues&gt;.
+</span><span class=""> 2585: 
+</span><span class=""> 2586: =head1 AUTHOR
+</span><span class=""> 2587: 
+</span><span class=""> 2588: Nigel Horne E&lt;lt&gt;njh@nigelhorne.comE&lt;gt&gt;
+</span><span class=""> 2589: 
+</span><span class=""> 2590: =head1 STATE DIAGRAM
+</span><span class=""> 2591: 
+</span><span class=""> 2592: The cache, for one key: a kind, the effective uid and groups, and the
+</span><span class=""> 2593: canonical directory (or, with the C&lt;device&gt; scope, its device).
+</span><span class=""> 2594: C&lt;can_revoke&gt;, C&lt;can_revoke_*&gt;, C&lt;why_not&gt;, C&lt;skip_unless_can_revoke&gt; and
+</span><span class=""> 2595: C&lt;permissions_report&gt; are all &quot;queries&quot;.  A call that croaks does not
+</span><span class=""> 2596: change the state.
+</span><span class=""> 2597: 
+</span><span class=""> 2598: 	                   query: probe, answer 1
+</span><span class=""> 2599: 	    +---------+ ---------------------------&gt; +------------+
+</span><span class=""> 2600: 	    |  EMPTY  |                              | CACHED_YES | --+ query: no probe
+</span><span class=""> 2601: 	    +---------+ ---------------------------&gt; +------------+ &lt;-+
+</span><span class=""> 2602: 	      ^  ^  ^      query: probe, answer 0          |
+</span><span class=""> 2603: 	      |  |  |                                      |
+</span><span class=""> 2604: 	      |  |  +------------- clear_cache ------------+
+</span><span class=""> 2605: 	      |  |                                      +-----------+
+</span><span class=""> 2606: 	      |  +-------------- clear_cache ---------- | CACHED_NO | --+ query: no probe
+</span><span class=""> 2607: 	      |                                         +-----------+ &lt;-+
+</span><span class=""> 2608: 	      +-- clear_cache (from EMPTY: no change)
+</span><span class=""> 2609: 
+</span><span class=""> 2610: There is no edge between CACHED_YES and CACHED_NO: a cached answer stays
+</span><span class=""> 2611: until C&lt;clear_cache&gt;, even if the environment changes.  C&lt;set_messages&gt;
+</span><span class=""> 2612: changes no state; a cached reason keeps the wording it was given when the
+</span><span class=""> 2613: probe ran.  C&lt;set_cache_scope&gt; and a change of effective uid or groups do
+</span><span class=""> 2614: not change any key&#39;s state; they change which key later queries use.
+</span><span class=""> 2615: 
+</span><span class=""> 2616: =encoding utf-8
+</span><span class=""> 2617: 
+</span><span class=""> 2618: =head1 FORMAL SPECIFICATION
 </span><span class=""> 2619: 
-</span><span class=""> 2620: 	[PATH, ERRNO, CHAR, UID, GID, DEV]
-</span><span class=""> 2621: 	Kind   ::= read | write | create | search | exec | delete | sticky
-</span><span class=""> 2622: 	Answer == { 0, 1 }
-</span><span class=""> 2623: 	DENIED == { EACCES, EPERM }
-</span><span class=""> 2624: 	Reason == seq&acirc;&#130;&#129; CHAR
-</span><span class=""> 2625: 	Scope  ::= directory | device
-</span><span class=""> 2626: 
-</span><span class=""> 2627: 	-- Outcome of one probe step.
-</span><span class=""> 2628: 	Outcome ::= ok | failed&acirc;&#159;&uml;&acirc;&#159;&uml;ERRNO&acirc;&#159;&copy;&acirc;&#159;&copy; | threw
+</span><span class=""> 2620: The specification below uses Z notation.  The English sections above are
+</span><span class=""> 2621: the normative description for everyday use.
+</span><span class=""> 2622: 
+</span><span class=""> 2623: 	[PATH, ERRNO, CHAR, UID, GID, DEV]
+</span><span class=""> 2624: 	Kind   ::= read | write | create | search | exec | delete | sticky
+</span><span class=""> 2625: 	Answer == { 0, 1 }
+</span><span class=""> 2626: 	DENIED == { EACCES, EPERM }
+</span><span class=""> 2627: 	Reason == seq&acirc;&#130;&#129; CHAR
+</span><span class=""> 2628: 	Scope  ::= directory | device
 </span><span class=""> 2629: 
-</span><span class=""> 2630: 	restricted : Kind &acirc;&#134;&#146; &acirc;&#132;&#149;
-</span><span class=""> 2631: 	restricted = { read &acirc;&#134;&brvbar; 0, write &acirc;&#134;&brvbar; 0400, create &acirc;&#134;&brvbar; 0500, search &acirc;&#134;&brvbar; 0,
-</span><span class=""> 2632: 	               exec &acirc;&#134;&brvbar; 0600, delete &acirc;&#134;&brvbar; 0500, sticky &acirc;&#134;&brvbar; 01777 }
-</span><span class=""> 2633: 	bits : Kind &acirc;&#134;&#146; &acirc;&#132;&#149;
-</span><span class=""> 2634: 	bits = (&Icirc;&raquo; k : Kind &acirc;&#128;&cent; 0700) &acirc;&#138;&#149; { sticky &acirc;&#134;&brvbar; 07777 }
-</span><span class=""> 2635: 
-</span><span class=""> 2636: 	Env &acirc;&#137;&#153; [ ruid, euid : UID; egids : &eth;&#157;&#148;&frac12; GID; windows : &eth;&#157;&#148;&sup1; ]
-</span><span class=""> 2637: 	precondition : Kind &Atilde;&#151; Env &acirc;&#134;&#146; &eth;&#157;&#148;&sup1;
-</span><span class=""> 2638: 	precondition(k, e) &acirc;&#135;&#148; k &acirc;&#137;&nbsp; sticky &acirc;&#136;&uml; (e.ruid = 0 &acirc;&#136;&sect; e.euid = 0 &acirc;&#136;&sect; &Acirc;&not; e.windows)
-</span><span class=""> 2639: 
-</span><span class=""> 2640: 	Probe
-</span><span class=""> 2641: 	  kind? : Kind
-</span><span class=""> 2642: 	  dir?  : PATH
-</span><span class=""> 2643: 	  env   : Env
-</span><span class=""> 2644: 	  setup, baseline, attempt, cleanup : Outcome
-</span><span class=""> 2645: 	  gotMode : &acirc;&#132;&#149;
-</span><span class=""> 2646: 	  modeSet : &eth;&#157;&#148;&sup1;
-</span><span class=""> 2647: 	  answer! : Answer
-</span><span class=""> 2648: 	  reason! : Reason &acirc;&#136;&ordf; {&acirc;&#138;&yen;}
-</span><span class=""> 2649: 	  ---------------------------------------------
-</span><span class=""> 2650: 	  modeSet &acirc;&#135;&#148; gotMode &acirc;&#136;&sect; bits(kind?) = restricted(kind?) &acirc;&#136;&sect; bits(kind?)
-</span><span class=""> 2651: 	  answer! = 1 &acirc;&#135;&#148; precondition(kind?, env)
-</span><span class=""> 2652: 	                &acirc;&#136;&sect; setup = ok &acirc;&#136;&sect; baseline = ok &acirc;&#136;&sect; modeSet
-</span><span class=""> 2653: 	                &acirc;&#136;&sect; (&acirc;&#136;&#131; e : DENIED &acirc;&#128;&cent; attempt = failed(e))
-</span><span class=""> 2654: 	                &acirc;&#136;&sect; cleanup = ok
-</span><span class=""> 2655: 	  answer! = 1 &acirc;&#135;&#148; reason! = &acirc;&#138;&yen;
-</span><span class=""> 2656: 
-</span><span class=""> 2657: 	Key   == Kind &Atilde;&#151; UID &Atilde;&#151; &eth;&#157;&#148;&frac12; GID &Atilde;&#151; (PATH &acirc;&#136;&ordf; DEV)
-</span><span class=""> 2658: 	Cache == Key &acirc;&#135;&cedil; Answer &Atilde;&#151; (Reason &acirc;&#136;&ordf; {&acirc;&#138;&yen;})
-</span><span class=""> 2659: 	scope : Scope
-</span><span class=""> 2660: 
-</span><span class=""> 2661: 	key : Kind &Atilde;&#151; Env &Atilde;&#151; PATH &acirc;&#134;&#146; Key
-</span><span class=""> 2662: 	key(k, e, p) = (k, e.euid, e.egids, if scope = device then dev(p) else canon(p))
+</span><span class=""> 2630: 	-- Outcome of one probe step.
+</span><span class=""> 2631: 	Outcome ::= ok | failed&acirc;&#159;&uml;&acirc;&#159;&uml;ERRNO&acirc;&#159;&copy;&acirc;&#159;&copy; | threw
+</span><span class=""> 2632: 
+</span><span class=""> 2633: 	restricted : Kind &acirc;&#134;&#146; &acirc;&#132;&#149;
+</span><span class=""> 2634: 	restricted = { read &acirc;&#134;&brvbar; 0, write &acirc;&#134;&brvbar; 0400, create &acirc;&#134;&brvbar; 0500, search &acirc;&#134;&brvbar; 0,
+</span><span class=""> 2635: 	               exec &acirc;&#134;&brvbar; 0600, delete &acirc;&#134;&brvbar; 0500, sticky &acirc;&#134;&brvbar; 01777 }
+</span><span class=""> 2636: 	bits : Kind &acirc;&#134;&#146; &acirc;&#132;&#149;
+</span><span class=""> 2637: 	bits = (&Icirc;&raquo; k : Kind &acirc;&#128;&cent; 0700) &acirc;&#138;&#149; { sticky &acirc;&#134;&brvbar; 07777 }
+</span><span class=""> 2638: 
+</span><span class=""> 2639: 	Env &acirc;&#137;&#153; [ ruid, euid : UID; egids : &eth;&#157;&#148;&frac12; GID; windows : &eth;&#157;&#148;&sup1; ]
+</span><span class=""> 2640: 	precondition : Kind &Atilde;&#151; Env &acirc;&#134;&#146; &eth;&#157;&#148;&sup1;
+</span><span class=""> 2641: 	precondition(k, e) &acirc;&#135;&#148; k &acirc;&#137;&nbsp; sticky &acirc;&#136;&uml; (e.ruid = 0 &acirc;&#136;&sect; e.euid = 0 &acirc;&#136;&sect; &Acirc;&not; e.windows)
+</span><span class=""> 2642: 
+</span><span class=""> 2643: 	Probe
+</span><span class=""> 2644: 	  kind? : Kind
+</span><span class=""> 2645: 	  dir?  : PATH
+</span><span class=""> 2646: 	  env   : Env
+</span><span class=""> 2647: 	  setup, baseline, attempt, cleanup : Outcome
+</span><span class=""> 2648: 	  gotMode : &acirc;&#132;&#149;
+</span><span class=""> 2649: 	  modeSet : &eth;&#157;&#148;&sup1;
+</span><span class=""> 2650: 	  answer! : Answer
+</span><span class=""> 2651: 	  reason! : Reason &acirc;&#136;&ordf; {&acirc;&#138;&yen;}
+</span><span class=""> 2652: 	  ---------------------------------------------
+</span><span class=""> 2653: 	  modeSet &acirc;&#135;&#148; gotMode &acirc;&#136;&sect; bits(kind?) = restricted(kind?) &acirc;&#136;&sect; bits(kind?)
+</span><span class=""> 2654: 	  answer! = 1 &acirc;&#135;&#148; precondition(kind?, env)
+</span><span class=""> 2655: 	                &acirc;&#136;&sect; setup = ok &acirc;&#136;&sect; baseline = ok &acirc;&#136;&sect; modeSet
+</span><span class=""> 2656: 	                &acirc;&#136;&sect; (&acirc;&#136;&#131; e : DENIED &acirc;&#128;&cent; attempt = failed(e))
+</span><span class=""> 2657: 	                &acirc;&#136;&sect; cleanup = ok
+</span><span class=""> 2658: 	  answer! = 1 &acirc;&#135;&#148; reason! = &acirc;&#138;&yen;
+</span><span class=""> 2659: 
+</span><span class=""> 2660: 	Key   == Kind &Atilde;&#151; UID &Atilde;&#151; &eth;&#157;&#148;&frac12; GID &Atilde;&#151; (PATH &acirc;&#136;&ordf; DEV)
+</span><span class=""> 2661: 	Cache == Key &acirc;&#135;&cedil; Answer &Atilde;&#151; (Reason &acirc;&#136;&ordf; {&acirc;&#138;&yen;})
+</span><span class=""> 2662: 	scope : Scope
 </span><span class=""> 2663: 
-</span><span class=""> 2664: 	CanRevoke
-</span><span class=""> 2665: 	  &Icirc;&#148;Cache ; Probe
-</span><span class=""> 2666: 	  ---------------------------------------------
-</span><span class=""> 2667: 	  key(kind?, env, dir?) &acirc;&#136;&#136; dom cache  &acirc;&#135;&#146; cache&#39; = cache
-</span><span class=""> 2668: 	                                       &acirc;&#136;&sect; answer! = first(cache key(kind?, env, dir?))
-</span><span class=""> 2669: 	  key(kind?, env, dir?) &acirc;&#136;&#137; dom cache  &acirc;&#135;&#146; cache&#39; = cache &acirc;&#136;&ordf; { key(kind?, env, dir?) &acirc;&#134;&brvbar; (answer!, reason!) }
-</span><span class=""> 2670: 
-</span><span class=""> 2671: 	WhyNot
-</span><span class=""> 2672: 	  &Icirc;&#158;Cache after CanRevoke
-</span><span class=""> 2673: 	  why! : Reason &acirc;&#136;&ordf; {&acirc;&#138;&yen;}
-</span><span class=""> 2674: 	  ---------------------------------------------
-</span><span class=""> 2675: 	  why! = second(cache key(kind?, env, dir?))
-</span><span class=""> 2676: 
-</span><span class=""> 2677: 	SkipUnlessCanRevoke
-</span><span class=""> 2678: 	  CanRevoke
-</span><span class=""> 2679: 	  count? : &acirc;&#132;&#149;&acirc;&#130;&#129;
-</span><span class=""> 2680: 	  skipped! : &acirc;&#132;&#149;
-</span><span class=""> 2681: 	  ---------------------------------------------
-</span><span class=""> 2682: 	  answer! = 1 &acirc;&#135;&#146; skipped! = 0 &acirc;&#136;&sect; the SKIP block continues
-</span><span class=""> 2683: 	  answer! = 0 &acirc;&#135;&#146; skipped! = count? &acirc;&#136;&sect; the SKIP block is left,
-</span><span class=""> 2684: 	                 each skip carrying second(cache key(kind?, env, dir?))
-</span><span class=""> 2685: 
-</span><span class=""> 2686: 	ClearCache
-</span><span class=""> 2687: 	  &Icirc;&#148;Cache
-</span><span class=""> 2688: 	  ---------------------------------------------
-</span><span class=""> 2689: 	  cache&#39; = &acirc;&#136;&#133;
-</span><span class=""> 2690: 
-</span><span class=""> 2691: 	SetCacheScope
-</span><span class=""> 2692: 	  &Icirc;&#158;Cache
-</span><span class=""> 2693: 	  scope?, scope, scope&#39; : Scope
-</span><span class=""> 2694: 	  ---------------------------------------------
-</span><span class=""> 2695: 	  scope&#39; = scope?
-</span><span class=""> 2696: 
-</span><span class=""> 2697: 	SetMessages
-</span><span class=""> 2698: 	  texts, texts&#39; : KEY &acirc;&#135;&cedil; seq&acirc;&#130;&#129; CHAR
-</span><span class=""> 2699: 	  overrides? : KEY &acirc;&#135;&cedil; seq CHAR
-</span><span class=""> 2700: 	  ---------------------------------------------
-</span><span class=""> 2701: 	  (dom overrides? &acirc;&#138;&#134; dom DEFAULTS &acirc;&#136;&sect; &acirc;&#138;&yen; &acirc;&#136;&#137; ran overrides? &acirc;&#136;&sect; &acirc;&#159;&uml;&acirc;&#159;&copy; &acirc;&#136;&#137; ran overrides?)
-</span><span class=""> 2702: 	      &acirc;&#135;&#146; texts&#39; = texts &acirc;&#138;&#149; overrides?
-</span><span class=""> 2703: 	  &Acirc;&not; (...) &acirc;&#135;&#146; texts&#39; = texts &acirc;&#136;&sect; croak
-</span><span class=""> 2704: 
-</span><span class=""> 2705: 	AclDenies
-</span><span class=""> 2706: 	  kind? : { read, write, exec }
-</span><span class=""> 2707: 	  path? : PATH
-</span><span class=""> 2708: 	  denied! : Answer
-</span><span class=""> 2709: 	  ---------------------------------------------
-</span><span class=""> 2710: 	  denied! = 1 &acirc;&#135;&#148; modeAllows(kind?, stat(path?), env) &acirc;&#136;&sect; &Acirc;&not; access(kind?, path?)
-</span><span class=""> 2711: 
-</span><span class=""> 2712: 	WithRevoked
-</span><span class=""> 2713: 	  kind? : Kind \ { sticky }
-</span><span class=""> 2714: 	  path? : PATH
-</span><span class=""> 2715: 	  code? : &acirc;&#138;&curren; &acirc;&#134;&#146; &acirc;&#138;&curren;
-</span><span class=""> 2716: 	  ---------------------------------------------
-</span><span class=""> 2717: 	  mode&#39;(path?) = mode(path?)                   -- restored, even if code? dies
-</span><span class=""> 2718: 	  during code? : mode(path?) = restricted(kind?)
-</span><span class=""> 2719: 	  result! = code?() &acirc;&#136;&uml; code?&#39;s exception, unchanged
-</span><span class=""> 2720: 
-</span><span class=""> 2721: 	-- Invariant: a probe leaves the target directory as it found it.
-</span><span class=""> 2722: 	entries&#39;(dir?) = entries(dir?)
+</span><span class=""> 2664: 	key : Kind &Atilde;&#151; Env &Atilde;&#151; PATH &acirc;&#134;&#146; Key
+</span><span class=""> 2665: 	key(k, e, p) = (k, e.euid, e.egids, if scope = device then dev(p) else canon(p))
+</span><span class=""> 2666: 
+</span><span class=""> 2667: 	CanRevoke
+</span><span class=""> 2668: 	  &Icirc;&#148;Cache ; Probe
+</span><span class=""> 2669: 	  ---------------------------------------------
+</span><span class=""> 2670: 	  key(kind?, env, dir?) &acirc;&#136;&#136; dom cache  &acirc;&#135;&#146; cache&#39; = cache
+</span><span class=""> 2671: 	                                       &acirc;&#136;&sect; answer! = first(cache key(kind?, env, dir?))
+</span><span class=""> 2672: 	  key(kind?, env, dir?) &acirc;&#136;&#137; dom cache  &acirc;&#135;&#146; cache&#39; = cache &acirc;&#136;&ordf; { key(kind?, env, dir?) &acirc;&#134;&brvbar; (answer!, reason!) }
+</span><span class=""> 2673: 
+</span><span class=""> 2674: 	WhyNot
+</span><span class=""> 2675: 	  &Icirc;&#158;Cache after CanRevoke
+</span><span class=""> 2676: 	  why! : Reason &acirc;&#136;&ordf; {&acirc;&#138;&yen;}
+</span><span class=""> 2677: 	  ---------------------------------------------
+</span><span class=""> 2678: 	  why! = second(cache key(kind?, env, dir?))
+</span><span class=""> 2679: 
+</span><span class=""> 2680: 	SkipUnlessCanRevoke
+</span><span class=""> 2681: 	  CanRevoke
+</span><span class=""> 2682: 	  count? : &acirc;&#132;&#149;&acirc;&#130;&#129;
+</span><span class=""> 2683: 	  skipped! : &acirc;&#132;&#149;
+</span><span class=""> 2684: 	  ---------------------------------------------
+</span><span class=""> 2685: 	  answer! = 1 &acirc;&#135;&#146; skipped! = 0 &acirc;&#136;&sect; the SKIP block continues
+</span><span class=""> 2686: 	  answer! = 0 &acirc;&#135;&#146; skipped! = count? &acirc;&#136;&sect; the SKIP block is left,
+</span><span class=""> 2687: 	                 each skip carrying second(cache key(kind?, env, dir?))
+</span><span class=""> 2688: 
+</span><span class=""> 2689: 	ClearCache
+</span><span class=""> 2690: 	  &Icirc;&#148;Cache
+</span><span class=""> 2691: 	  ---------------------------------------------
+</span><span class=""> 2692: 	  cache&#39; = &acirc;&#136;&#133;
+</span><span class=""> 2693: 
+</span><span class=""> 2694: 	SetCacheScope
+</span><span class=""> 2695: 	  &Icirc;&#158;Cache
+</span><span class=""> 2696: 	  scope?, scope, scope&#39; : Scope
+</span><span class=""> 2697: 	  ---------------------------------------------
+</span><span class=""> 2698: 	  scope&#39; = scope?
+</span><span class=""> 2699: 
+</span><span class=""> 2700: 	SetMessages
+</span><span class=""> 2701: 	  texts, texts&#39; : KEY &acirc;&#135;&cedil; seq&acirc;&#130;&#129; CHAR
+</span><span class=""> 2702: 	  overrides? : KEY &acirc;&#135;&cedil; seq CHAR
+</span><span class=""> 2703: 	  ---------------------------------------------
+</span><span class=""> 2704: 	  (dom overrides? &acirc;&#138;&#134; dom DEFAULTS &acirc;&#136;&sect; &acirc;&#138;&yen; &acirc;&#136;&#137; ran overrides? &acirc;&#136;&sect; &acirc;&#159;&uml;&acirc;&#159;&copy; &acirc;&#136;&#137; ran overrides?)
+</span><span class=""> 2705: 	      &acirc;&#135;&#146; texts&#39; = texts &acirc;&#138;&#149; overrides?
+</span><span class=""> 2706: 	  &Acirc;&not; (...) &acirc;&#135;&#146; texts&#39; = texts &acirc;&#136;&sect; croak
+</span><span class=""> 2707: 
+</span><span class=""> 2708: 	AclDenies
+</span><span class=""> 2709: 	  kind? : { read, write, exec }
+</span><span class=""> 2710: 	  path? : PATH
+</span><span class=""> 2711: 	  denied! : Answer
+</span><span class=""> 2712: 	  ---------------------------------------------
+</span><span class=""> 2713: 	  denied! = 1 &acirc;&#135;&#148; modeAllows(kind?, stat(path?), env) &acirc;&#136;&sect; &Acirc;&not; access(kind?, path?)
+</span><span class=""> 2714: 
+</span><span class=""> 2715: 	WithRevoked
+</span><span class=""> 2716: 	  kind? : Kind \ { sticky }
+</span><span class=""> 2717: 	  path? : PATH
+</span><span class=""> 2718: 	  code? : &acirc;&#138;&curren; &acirc;&#134;&#146; &acirc;&#138;&curren;
+</span><span class=""> 2719: 	  ---------------------------------------------
+</span><span class=""> 2720: 	  mode&#39;(path?) = mode(path?)                   -- restored, even if code? dies
+</span><span class=""> 2721: 	  during code? : mode(path?) = restricted(kind?)
+</span><span class=""> 2722: 	  result! = code?() &acirc;&#136;&uml; code?&#39;s exception, unchanged
 </span><span class=""> 2723: 
-</span><span class=""> 2724: =head1 LICENSE AND COPYRIGHT
-</span><span class=""> 2725: 
-</span><span class=""> 2726: Copyright 2026 Nigel Horne.
-</span><span class=""> 2727: 
-</span><span class=""> 2728: Usage is subject to the GPL2 licence terms.
-</span><span class=""> 2729: If you use it,
-</span><span class=""> 2730: please let me know.
-</span><span class=""> 2731: 
-</span><span class=""> 2732: =cut
-</span><span class=""> 2733: 
-</span><span class=""> 2734: 1;
+</span><span class=""> 2724: 	-- Invariant: a probe leaves the target directory as it found it.
+</span><span class=""> 2725: 	entries&#39;(dir?) = entries(dir?)
+</span><span class=""> 2726: 
+</span><span class=""> 2727: =head1 LICENSE AND COPYRIGHT
+</span><span class=""> 2728: 
+</span><span class=""> 2729: Copyright 2026 Nigel Horne.
+</span><span class=""> 2730: 
+</span><span class=""> 2731: Usage is subject to the GPL2 licence terms.
+</span><span class=""> 2732: If you use it,
+</span><span class=""> 2733: please let me know.
+</span><span class=""> 2734: 
+</span><span class=""> 2735: =cut
+</span><span class=""> 2736: 
+</span><span class=""> 2737: 1;
 </span></pre>
 
 <script>
