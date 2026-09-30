@@ -53,7 +53,10 @@ sub simulate {
 	push @guards, chmod_works() unless exists $how{mode};
 
 	for my $seam (@OP_SEAMS) {
-		my $orig = \&{"Test::Permissions::$seam"};
+		# The exec probe's real baseline runs a /bin/sh script, which is
+		# impossible on Windows; these scenarios are about later steps, so
+		# its baseline is simulated as a successful run everywhere.
+		my $orig = $seam eq '_try_exec' ? sub { (1, 0) } : \&{"Test::Permissions::$seam"};
 		my $calls = 0;
 		push @guards, Test::Mockingbird::mock_scoped('Test::Permissions', $seam, sub {
 			my $step = $calls++ ? 'attempt' : 'baseline';

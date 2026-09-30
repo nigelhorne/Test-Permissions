@@ -367,4 +367,71 @@ subtest '_cache_key' => sub {
 	Test::Permissions::set_cache_scope('directory');
 };
 
+# Mutant killers: the root branches, reached by mocking _uids and
+# _unlink_as, so that they run without root.
+
+subtest '_can_switch_uid, with _uids mocked' => sub {
+	for my $case ([ 0, 0, 1 ], [ 0, 1000, 0 ], [ 1000, 0, 0 ], [ 1000, 1000, 0 ]) {
+		my ($ruid, $euid, $expected) = @{$case};
+		my $g = Test::Mockingbird::mock_scoped('Test::Permissions', '_uids', sub { ($ruid, $euid) });
+		is(Test::Permissions::_can_switch_uid(), $^O eq 'MSWin32' ? 0 : $expected, "real $ruid, effective $euid");
+	}
+	is_deeply([ Test::Permissions::_uids() ], [ $<, $> ], '_uids is ($<, $>)');
+};
+
+subtest '_mode_allows as root, with _uids mocked' => sub {
+	plan skip_all => 'Windows always uses the owner bits' if $^O eq 'MSWin32';
+	my $g = Test::Mockingbird::mock_scoped('Test::Permissions', '_uids', sub { (0, 0) });
+	my $m = \&Test::Permissions::_mode_allows;
+	is($m->('read', [ 0, 0, 0, 0, 1, 1 ], 0), 1, 'root reads a mode-0 file');
+	is($m->('write', [ 0, 0, 0, 0, 1, 1 ], 0), 1, 'root writes a mode-0 file');
+	is($m->('exec', [ 0, 0, 0600, 0, 1, 1 ], 0), 0, 'root cannot run a file with no x bit');
+	is($m->('exec', [ 0, 0, 0010, 0, 1, 1 ], 0), 1, '... but can with any x bit');
+	is($m->('exec', [ 0, 0, 0, 0, 1, 1 ], 1), 1, 'root searches a mode-0 directory');
+};
+
+subtest '_try_unlink as another user, with _unlink_as mocked' => sub {
+	my $f = File::Spec->catfile($dir, 'as-other');
+	Test::Permissions::_make_file($f, '');
+	my $cwd = Cwd::getcwd();
+	my @seen;
+	for my $case ([ [ 1, 1, 0 ], [ 1, 0 ] ], [ [ 1, 0, Errno::EPERM() ], [ 0, Errno::EPERM() ] ]) {
+		my ($returns, $expected) = @{$case};
+		my $g = Test::Mockingbird::mock_scoped('Test::Permissions', '_unlink_as', sub { push @seen, [ Cwd::getcwd(), @_ ]; @{$returns} });
+		is_deeply([ Test::Permissions::_try_unlink($f, 65533) ], $expected, "_unlink_as gives (@{$returns})");
+	}
+	is($seen[0][1], 'as-other', 'unlinks the bare name');
+	is($seen[0][2], 65533, 'as the given uid');
+	is(Cwd::abs_path($seen[0][0]), Cwd::abs_path($dir), "from inside the file's directory");
+	is(Cwd::getcwd(), $cwd, 'and changes back');
+	{
+		my $g = Test::Mockingbird::mock_scoped('Test::Permissions', '_unlink_as', sub { (0) });
+		throws_ok { Test::Permissions::_try_unlink($f, 65533) } qr/^cannot act as uid 65533$/, 'not switched: throws';
+		is(Cwd::getcwd(), $cwd, '... after changing back');
+	}
+	unlink $f;
+};
+
+subtest '_unlink_as without root' => sub {
+	plan skip_all => 'root can switch' if $> == 0 && $< == 0;
+	my $euid = $>;
+	is_deeply([ Test::Permissions::_unlink_as('nothing', 65533) ], [ 0 ], 'cannot switch: (0)');
+	is($>, $euid, 'effective uid unchanged');
+};
+
+subtest '_give_away returns nothing' => sub {
+	my $f = File::Spec->catfile($dir, 'mine');
+	Test::Permissions::_make_file($f, '');
+	my @r = Test::Permissions::_give_away($f, $>);
+	is(scalar @r, 0, 'giving a file to its own owner works and returns nothing');
+	unlink $f;
+};
+
+subtest '_probe: _mode_of failing reports the errno text' => sub {
+	my $g = Test::Mockingbird::mock_scoped('Test::Permissions', '_mode_of', sub { $! = Errno::ENOENT(); undef });
+	my $text = do { local $! = Errno::ENOENT(); "$!" };
+	my (undef, $why) = Test::Permissions::_probe('write', Cwd::abs_path($dir));
+	like($why, qr/^Could not set up the write probe in '.*': \Q$text\E$/, 'reason_setup_failed with the stat error');
+};
+
 done_testing();

@@ -304,7 +304,7 @@ my %message_override;
 
 =head1 SYNOPSIS
 
-	use Test::More;
+	use Test::Most;
 	use File::Temp qw(tempdir);
 	use Test::Permissions qw(:revoke :guard :report);
 
@@ -2317,13 +2317,14 @@ sub _make_file {
 sub _mode_allows {
 	my ($kind, $stat, $is_dir) = @_;
 	my $mode = $stat->[$STAT_MODE];
+	my (undef, $euid) = _uids();
 
-	if($> == $ROOT_UID && $^O ne 'MSWin32') {
+	if($euid == $ROOT_UID && $^O ne 'MSWin32') {
 		return 1 unless $kind eq 'exec';
 		return $is_dir || ($mode & $ANY_EXEC) ? 1 : 0;
 	}
 	my %group = map { $_ => 1 } split ' ', $);
-	my $shift = $stat->[$STAT_UID] == $> ? $OWNER_SHIFT
+	my $shift = $stat->[$STAT_UID] == $euid ? $OWNER_SHIFT
 		: $group{ $stat->[$STAT_GID] } ? $GROUP_SHIFT
 		: $OTHER_SHIFT;
 	return ($mode >> $shift) & $ACCESS_BIT{$kind} ? 1 : 0;
@@ -2419,18 +2420,28 @@ sub _try_unlink {
 	my $cwd = _untaint(Cwd::getcwd());
 	chdir $dir or die "chdir $dir: $!\n";	## no critic (ErrorHandling::RequireCarping)
 
-	my ($ok, $errno, $switched);
-	{
-		local $> = $as;
-		$switched = $> == $as;
-		if($switched) {
-			$ok = unlink $name;
-			$errno = 0 + $!;
-		}
-	}
+	my ($switched, $ok, $errno) = _unlink_as($name, $as);
 	chdir $cwd or die "chdir $cwd: $!\n";	## no critic (ErrorHandling::RequireCarping)
 	die "cannot act as uid $as\n" unless $switched;	## no critic (ErrorHandling::RequireCarping)
 	return $ok ? (1, 0) : (0, $errno);
+}
+
+# _unlink_as
+#
+# Purpose:  The privileged core of _try_unlink: set the effective uid,
+#           unlink a name in the current directory, and set it back.
+#           Kept this small because only real root can run it: tests mock
+#           it to reach every other path of _try_unlink.
+# Entry:    $name - a file name in the current directory; $uid.
+# Exit:     ($switched, $ok, $errno): whether the effective uid could be
+#           changed, and if so whether unlink worked and its errno.
+sub _unlink_as {
+	my ($name, $uid) = @_;
+	no autodie;
+	local $> = $uid;
+	return (0) unless $> == $uid;
+	my $ok = unlink $name;
+	return (1, $ok, 0 + $!);
 }
 
 # _can_switch_uid
@@ -2440,18 +2451,29 @@ sub _try_unlink {
 # Entry:    None.
 # Exit:     1 or 0.
 sub _can_switch_uid {
-	return $^O ne 'MSWin32' && $< == $ROOT_UID && $> == $ROOT_UID ? 1 : 0;
+	my ($ruid, $euid) = _uids();
+	return $^O ne 'MSWin32' && $ruid == $ROOT_UID && $euid == $ROOT_UID ? 1 : 0;
+}
+
+# _uids
+#
+# Purpose:  The real and effective uid, through a seam, so that tests can
+#           exercise the root branches without being root.
+# Entry:    None.
+# Exit:     ($<, $>).
+sub _uids {
+	return ($<, $>);
 }
 
 # _give_away
 #
 # Purpose:  Give a file to another user (sticky setup).  autodie.
 # Entry:    $path; $uid.
-# Exit:     1.  Throws on failure.
+# Exit:     Nothing.  Throws on failure.
 sub _give_away {
 	my ($path, $uid) = @_;
 	chown $uid, -1, $path;
-	return 1;
+	return;
 }
 
 # _access

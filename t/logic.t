@@ -84,7 +84,10 @@ sub check {
 	push @guards, Test::Mockingbird::mock_scoped('Test::Permissions', '_make_probe_dir', sub { die "no setup\n" })
 		unless $setup;
 	for my $seam (qw(_try_open _try_stat _try_exec _try_unlink)) {
-		my $orig = \&{"Test::Permissions::$seam"};
+		# The exec probe's real baseline runs a /bin/sh script, which is
+		# impossible on Windows; these scenarios are about later steps, so
+		# its baseline is simulated as a successful run everywhere.
+		my $orig = $seam eq '_try_exec' ? sub { (1, 0) } : \&{"Test::Permissions::$seam"};
 		my $calls = 0;
 		push @guards, Test::Mockingbird::mock_scoped('Test::Permissions', $seam, sub {
 			if($calls++ == 0) {

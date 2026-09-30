@@ -9,7 +9,7 @@ Test::Permissions - Find out whether chmod can really take access away, so tests
 ## Synopsis
 
 ```perl
-    use Test::More;
+    use Test::Most;
     use File::Temp qw(tempdir);
     use Test::Permissions qw(:revoke :guard :report);
 

@@ -228,7 +228,9 @@ PROGRAM
 		is($status, 0, 'passes') or diag($output);
 		my @skips = $output =~ /^ok \d+ # skip (.+)$/mg;
 		is(scalar @skips, 2, 'two tests skipped');
-		like($skips[0] // '', qr/^chmod cannot revoke read access/, 'with the reason');
+		# Root is simulated, so the reason is reason_not_enforced - or, on
+		# Windows, where chmod 0 is ignored, reason_chmod_ignored.
+		like($skips[0] // '', qr/^chmod (?:cannot revoke read access|did not set mode)/, 'with the reason');
 		like($output, qr/^# TEST_BUILDER not loaded$/m, 'without loading Test::Builder');
 	};
 }
