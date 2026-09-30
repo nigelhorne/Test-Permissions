@@ -1,0 +1,297 @@
+{
+   "runs" : [
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770304.86537,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "-e",
+         "start" : 1790770295.82663,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770295.97524,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "-e",
+         "start" : 1790770295.97509,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770296.35599,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "t/data-flow.t",
+         "start" : 1790770296.29568,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770296.87277,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "t/domain.t",
+         "start" : 1790770296.80946,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770297.66982,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "t/edge_cases.t",
+         "start" : 1790770297.31817,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770298.06134,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "t/eof.t",
+         "start" : 1790770298.06102,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770298.30239,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "t/eol.t",
+         "start" : 1790770298.3021,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770298.81057,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "t/error_paths.t",
+         "start" : 1790770298.61946,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770299.35505,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "t/function.t",
+         "start" : 1790770299.26962,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770301.72121,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "t/integration.t",
+         "start" : 1790770299.82835,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770300.08543,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "/tmp/OA9djUdGkf/downstream.t",
+         "start" : 1790770300.07226,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770300.49296,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "/tmp/OA9djUdGkf/downstream.t",
+         "start" : 1790770300.47918,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770300.84799,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "/tmp/OA9djUdGkf/plain.pl",
+         "start" : 1790770300.84774,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770301.18191,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "/tmp/OA9djUdGkf/exit.pl",
+         "start" : 1790770301.17506,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770301.57692,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "/tmp/OA9djUdGkf/noskip.pl",
+         "start" : 1790770301.57209,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770302.07562,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "t/kwalitee.t",
+         "start" : 1790770302.07532,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770303.15875,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "t/logic.t",
+         "start" : 1790770302.39226,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770303.63737,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "t/path.t",
+         "start" : 1790770303.59272,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770304.15653,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "t/transition.t",
+         "start" : 1790770304.10334,
+         "version" : "0.01"
+      },
+      {
+         "OS" : "linux",
+         "abstract" : "Find out whether chmod can really take access away, so tests know when to skip",
+         "dir" : "/home/runner/work/Test-Permissions/Test-Permissions",
+         "finish" : 1790770304.67425,
+         "name" : "Test-Permissions",
+         "perl" : "5.40.5",
+         "run" : "t/unit.t",
+         "start" : 1790770304.60447,
+         "version" : "0.01"
+      }
+   ],
+   "summary" : {
+      "/tmp/OA9djUdGkf/exit.pl" : {},
+      "/tmp/OA9djUdGkf/noskip.pl" : {},
+      "/tmp/OA9djUdGkf/plain.pl" : {},
+      "Total" : {
+         "branch" : {
+            "covered" : 111,
+            "error" : 1,
+            "percentage" : 99.1071428571429,
+            "total" : 112,
+            "uncoverable" : 0
+         },
+         "condition" : {
+            "covered" : 31,
+            "error" : 2,
+            "percentage" : 93.9393939393939,
+            "total" : 33,
+            "uncoverable" : 0
+         },
+         "statement" : {
+            "covered" : 301,
+            "error" : 1,
+            "percentage" : 99.6688741721854,
+            "total" : 302
+         },
+         "subroutine" : {
+            "covered" : 49,
+            "percentage" : 100,
+            "total" : 49
+         },
+         "total" : {
+            "covered" : 492,
+            "error" : 4,
+            "percentage" : 99.1935483870968,
+            "total" : 496,
+            "uncoverable" : 0
+         }
+      },
+      "lib/Test/Permissions.pm" : {
+         "branch" : {
+            "covered" : 111,
+            "error" : 1,
+            "percentage" : 99.1071428571429,
+            "total" : 112,
+            "uncoverable" : 0
+         },
+         "condition" : {
+            "covered" : 31,
+            "error" : 2,
+            "percentage" : 93.9393939393939,
+            "total" : 33,
+            "uncoverable" : 0
+         },
+         "statement" : {
+            "covered" : 301,
+            "error" : 1,
+            "percentage" : 99.6688741721854,
+            "total" : 302
+         },
+         "subroutine" : {
+            "covered" : 49,
+            "percentage" : 100,
+            "total" : 49
+         },
+         "total" : {
+            "covered" : 492,
+            "error" : 4,
+            "percentage" : 99.1935483870968,
+            "total" : 496,
+            "uncoverable" : 0
+         }
+      }
+   }
+}
