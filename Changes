@@ -1,6 +1,6 @@
 Revision history for Test-Permissions
 
-0.001.1
+0.001.1	Fri Oct  2 09:21:53 AM EDT 2026
 	[ Bug Fixes ]
 	Bump minimum version of Params::Validate::Strict
 
