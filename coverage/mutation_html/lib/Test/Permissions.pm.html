@@ -2660,19 +2660,19 @@ Approximate LCSAJ segments: 199<br>
 </span><span class=""> 2319: # Exit:     1 or 0.
 </span><span class=""> 2320: sub _mode_allows {
 </span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">2321 → 2325 → 2329</span></span> 2321: 	my ($kind, $stat, $is_dir) = @_;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2322: 	my $mode = $stat-&gt;[$STAT_MODE];
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2323: 	my (undef, $euid) = _uids();
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2324: 
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2325: 	if($euid == $ROOT_UID &amp;&amp; $^O ne &#39;MSWin32&#39;) {
-</span><span class=""> 2326: 		return 1 unless $kind eq &#39;exec&#39;;
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2327: 		return $is_dir || ($mode &amp; $ANY_EXEC) ? 1 : 0;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 2328: 	}
+</span><span class=""> 2322: 	my $mode = $stat-&gt;[$STAT_MODE];
+</span><span class=""> 2323: 	my (undef, $euid) = _uids();
+</span><span class=""> 2324: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2325: 	if($euid == $ROOT_UID &amp;&amp; $^O ne &#39;MSWin32&#39;) {
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2326: 		return 1 unless $kind eq &#39;exec&#39;;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2327: 		return $is_dir || ($mode &amp; $ANY_EXEC) ? 1 : 0;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2328: 	}
 </span><span class=""> 2329: 	my %group = map { $_ =&gt; 1 } split &#39; &#39;, $);
 </span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2330: 	my $shift = $stat-&gt;[$STAT_UID] == $euid ? $OWNER_SHIFT
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2331: 		: $group{ $stat-&gt;[$STAT_GID] } ? $GROUP_SHIFT
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 2331: 		: $group{ $stat-&gt;[$STAT_GID] } ? $GROUP_SHIFT
 </span><span class=""> 2332: 		: $OTHER_SHIFT;
-</span><span class=""> 2333: 	return ($mode &gt;&gt; $shift) &amp; $ACCESS_BIT{$kind} ? 1 : 0;
-</span><span class=""> 2334: }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2333: 	return ($mode &gt;&gt; $shift) &amp; $ACCESS_BIT{$kind} ? 1 : 0;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2334: }
 </span><span class=""> 2335: 
 </span><span class=""> 2336: # -----------------------------------------------------------------------
 </span><span class=""> 2337: # Seams: every probe step goes through one of these, so that tests can
@@ -2686,11 +2686,11 @@ Approximate LCSAJ segments: 199<br>
 </span><span class=""> 2345: # Entry:    $dir - the target directory (untainted).
 </span><span class=""> 2346: # Exit:     The path of P.  Throws on failure.
 </span><span class=""> 2347: sub _make_probe_dir {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2348: 	my ($dir) = @_;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2349: 	my $probe_dir = File::Temp::tempdir($PROBE_TEMPLATE, DIR =&gt; $dir, CLEANUP =&gt; 1);
+</span><span class=""> 2348: 	my ($dir) = @_;
+</span><span class=""> 2349: 	my $probe_dir = File::Temp::tempdir($PROBE_TEMPLATE, DIR =&gt; $dir, CLEANUP =&gt; 1);
 </span><span class=""> 2350: 	_set_mode($probe_dir, $MODE_DIR_RWX);
-</span><span class=""> 2351: 	return $probe_dir;
-</span><span class=""> 2352: }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2351: 	return $probe_dir;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2352: }
 </span><span class=""> 2353: 
 </span><span class=""> 2354: # _try_open
 </span><span class=""> 2355: #
@@ -2698,11 +2698,11 @@ Approximate LCSAJ segments: 199<br>
 </span><span class=""> 2357: # Entry:    $path; $mode - an open() mode.
 </span><span class=""> 2358: # Exit:     (1, 0) if it opened (the handle is closed again), else
 </span><span class=""> 2359: #           (0, errno).  Never throws.
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2360: sub _try_open {
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">2361 → 2363 → 2367</span></span> 2361: 	my ($path, $mode) = @_;
+</span><span class=""> 2360: sub _try_open {
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">2361 → 2363 → 2367</span></span> 2361: 	my ($path, $mode) = @_;
 </span><span class=""> 2362: 	no autodie;
-</span><span class=""> 2363: 	if(open my $fh, $mode, $path) {
-</span><span class=""> 2364: 		close $fh;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2363: 	if(open my $fh, $mode, $path) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 2364: 		close $fh;
 </span><span class=""> 2365: 		return (1, 0);
 </span><span class=""> 2366: 	}
 </span><span class=""> 2367: 	return (0, 0 + $!);
@@ -2714,11 +2714,11 @@ Approximate LCSAJ segments: 199<br>
 </span><span class=""> 2373: # Entry:    $path.
 </span><span class=""> 2374: # Exit:     (1, 0) or (0, errno).  Never throws.
 </span><span class=""> 2375: sub _try_stat {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2376: 	my ($path) = @_;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2377: 	no autodie;
+</span><span class=""> 2376: 	my ($path) = @_;
+</span><span class=""> 2377: 	no autodie;
 </span><span class=""> 2378: 	my @stat = stat $path;
-</span><span class=""> 2379: 	return @stat ? (1, 0) : (0, 0 + $!);
-</span><span class=""> 2380: }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2379: 	return @stat ? (1, 0) : (0, 0 + $!);
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2380: }
 </span><span class=""> 2381: 
 </span><span class=""> 2382: # _try_exec
 </span><span class=""> 2383: #
@@ -2733,12 +2733,12 @@ Approximate LCSAJ segments: 199<br>
 </span><span class=""> 2392: 	no autodie;
 </span><span class=""> 2393: 	no warnings &#39;exec&#39;;	## no critic (TestingAndDebugging::ProhibitNoWarnings) - &quot;Can&#39;t exec&quot; is expected
 </span><span class=""> 2394: 
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2395: 	local %ENV = %ENV;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2396: 	delete @ENV{@UNSAFE_ENV};
-</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class=""> 2397: 	my $status = system { $path } $path;
-</span><span class=""> 2398: 	return (0, 0 + $!) if $status == -1;
-</span><span class=""> 2399: 	return $? == 0 ? (1, 0) : (0, $ERRNO_BAD_EXIT);
-</span><span class=""> 2400: }
+</span><span class=""> 2395: 	local %ENV = %ENV;
+</span><span class=""> 2396: 	delete @ENV{@UNSAFE_ENV};
+</span><span class=""> 2397: 	my $status = system { $path } $path;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2398: 	return (0, 0 + $!) if $status == -1;
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2399: 	return $? == 0 ? (1, 0) : (0, $ERRNO_BAD_EXIT);
+</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class=""> 2400: }
 </span><span class=""> 2401: 
 </span><span class=""> 2402: # _try_unlink
 </span><span class=""> 2403: #
@@ -2752,23 +2752,23 @@ Approximate LCSAJ segments: 199<br>
 </span><span class=""> 2411: # Exit:     (1, 0) or (0, errno).  Throws only if it cannot change
 </span><span class=""> 2412: #           directory or effective uid, or cannot change back.
 </span><span class=""> 2413: sub _try_unlink {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">2414 → 2417 → 2421</span></span> 2414: 	my ($path, $as) = @_;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2415: 	no autodie;
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2416: 
-</span><span class=""> 2417: 	if(!defined $as) {
-</span><span class=""> 2418: 		return unlink($path) ? (1, 0) : (0, 0 + $!);
-</span><span class=""> 2419: 	}
+</span><span class=""><span class="lcsaj-tip"><span class="lcsaj-dot">●</span><span class="lcsaj-tip-text">2414 → 2417 → 2421</span></span> 2414: 	my ($path, $as) = @_;
+</span><span class=""> 2415: 	no autodie;
+</span><span class=""> 2416: 
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2417: 	if(!defined $as) {
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2418: 		return unlink($path) ? (1, 0) : (0, 0 + $!);
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2419: 	}
 </span><span class=""> 2420: 
 </span><span class=""> 2421: 	my ($volume, $directories, $name) = File::Spec-&gt;splitpath($path);
 </span><span class=""> 2422: 	my $dir = File::Spec-&gt;catpath($volume, $directories, q{});
 </span><span class=""> 2423: 	my $cwd = _untaint(Cwd::getcwd());
 </span><span class=""> 2424: 	chdir $dir or die &quot;chdir $dir: $!\n&quot;;	## no critic (ErrorHandling::RequireCarping)
 </span><span class=""> 2425: 
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2426: 	my ($switched, $ok, $errno) = _unlink_as($name, $as);
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2427: 	chdir $cwd or die &quot;chdir $cwd: $!\n&quot;;	## no critic (ErrorHandling::RequireCarping)
+</span><span class=""> 2426: 	my ($switched, $ok, $errno) = _unlink_as($name, $as);
+</span><span class=""> 2427: 	chdir $cwd or die &quot;chdir $cwd: $!\n&quot;;	## no critic (ErrorHandling::RequireCarping)
 </span><span class=""> 2428: 	die &quot;cannot act as uid $as\n&quot; unless $switched;	## no critic (ErrorHandling::RequireCarping)
-</span><span class=""> 2429: 	return $ok ? (1, 0) : (0, $errno);
-</span><span class=""> 2430: }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2429: 	return $ok ? (1, 0) : (0, $errno);
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2430: }
 </span><span class=""> 2431: 
 </span><span class=""> 2432: # _unlink_as
 </span><span class=""> 2433: #
@@ -2780,11 +2780,11 @@ Approximate LCSAJ segments: 199<br>
 </span><span class=""> 2439: # Exit:     ($switched, $ok, $errno): whether the effective uid could be
 </span><span class=""> 2440: #           changed, and if so whether unlink worked and its errno.
 </span><span class=""> 2441: sub _unlink_as {
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2442: 	my ($name, $uid) = @_;
-</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 2443: 	no autodie;
+</span><span class=""> 2442: 	my ($name, $uid) = @_;
+</span><span class=""> 2443: 	no autodie;
 </span><span class=""> 2444: 	local $&gt; = $uid;
-</span><span class=""> 2445: 	return (0) unless $&gt; == $uid;
-</span><span class=""> 2446: 	my $ok = unlink $name;
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2445: 	return (0) unless $&gt; == $uid;
+</span><p> <b> Mutants (Total: 1, Killed: 1, Survived: 0)</b><p><span class=""> 2446: 	my $ok = unlink $name;
 </span><span class=""> 2447: 	return (1, $ok, 0 + $!);
 </span><span class=""> 2448: }
 </span><span class=""> 2449: 
@@ -2793,11 +2793,11 @@ Approximate LCSAJ segments: 199<br>
 </span><span class=""> 2452: # Purpose:  The sticky probe&#39;s precondition: can this process act as
 </span><span class=""> 2453: #           another user?  Only root (real and effective) outside Windows.
 </span><span class=""> 2454: # Entry:    None.
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2455: # Exit:     1 or 0.
-</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class=""> 2456: sub _can_switch_uid {
+</span><span class=""> 2455: # Exit:     1 or 0.
+</span><span class=""> 2456: sub _can_switch_uid {
 </span><span class=""> 2457: 	my ($ruid, $euid) = _uids();
-</span><span class=""> 2458: 	return $^O ne &#39;MSWin32&#39; &amp;&amp; $ruid == $ROOT_UID &amp;&amp; $euid == $ROOT_UID ? 1 : 0;
-</span><span class=""> 2459: }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2458: 	return $^O ne &#39;MSWin32&#39; &amp;&amp; $ruid == $ROOT_UID &amp;&amp; $euid == $ROOT_UID ? 1 : 0;
+</span><p> <b> Mutants (Total: 3, Killed: 3, Survived: 0)</b><p><span class=""> 2459: }
 </span><span class=""> 2460: 
 </span><span class=""> 2461: # _uids
 </span><span class=""> 2462: #
@@ -2827,33 +2827,33 @@ Approximate LCSAJ segments: 199<br>
 </span><span class=""> 2486: #           (acl_denies).
 </span><span class=""> 2487: # Entry:    $kind - read, write or exec; $path.
 </span><span class=""> 2488: # Exit:     1 or 0.
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2489: sub _access {
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2490: 	my ($kind, $path) = @_;
+</span><span class=""> 2489: sub _access {
+</span><span class=""> 2490: 	my ($kind, $path) = @_;
 </span><span class=""> 2491: 	use filetest &#39;access&#39;;
-</span><span class=""> 2492: 	return ($kind eq &#39;read&#39; ? -r $path : $kind eq &#39;write&#39; ? -w $path : -x $path) ? 1 : 0;
-</span><span class=""> 2493: }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2492: 	return ($kind eq &#39;read&#39; ? -r $path : $kind eq &#39;write&#39; ? -w $path : -x $path) ? 1 : 0;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2493: }
 </span><span class=""> 2494: 
 </span><span class=""> 2495: # _set_mode
 </span><span class=""> 2496: #
 </span><span class=""> 2497: # Purpose:  chmod one path.
 </span><span class=""> 2498: # Entry:    $path; $mode.
 </span><span class=""> 2499: # Exit:     1.  Throws (autodie) on failure.
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2500: sub _set_mode {
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2501: 	my ($path, $mode) = @_;
+</span><span class=""> 2500: sub _set_mode {
+</span><span class=""> 2501: 	my ($path, $mode) = @_;
 </span><span class=""> 2502: 	chmod $mode, $path;
-</span><span class=""> 2503: 	return 1;
-</span><span class=""> 2504: }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2503: 	return 1;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2504: }
 </span><span class=""> 2505: 
 </span><span class=""> 2506: # _mode_of
 </span><span class=""> 2507: #
 </span><span class=""> 2508: # Purpose:  The permission bits of a path.
 </span><span class=""> 2509: # Entry:    $path.
 </span><span class=""> 2510: # Exit:     mode &amp; 07777, or undef if stat fails ($! says why).
-</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2511: sub _mode_of {
-</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2512: 	my ($path) = @_;
+</span><span class=""> 2511: sub _mode_of {
+</span><span class=""> 2512: 	my ($path) = @_;
 </span><span class=""> 2513: 	my @stat = stat $path;
-</span><span class=""> 2514: 	return @stat ? $stat[$STAT_MODE] &amp; $MODE_BITS : undef;
-</span><span class=""> 2515: }
+</span><span class="killed tooltip" data-tooltip="Mutations here were killed. Tests are effectively covering this logic."> 2514: 	return @stat ? $stat[$STAT_MODE] &amp; $MODE_BITS : undef;
+</span><p> <b> Mutants (Total: 2, Killed: 2, Survived: 0)</b><p><span class=""> 2515: }
 </span><span class=""> 2516: 
 </span><span class=""> 2517: =head1 FAILURE POLICY
 </span><span class=""> 2518: 
