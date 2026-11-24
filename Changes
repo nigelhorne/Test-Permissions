@@ -2,7 +2,8 @@ Revision history for Test-Permissions
 
 0.001.3
 	[ Bug Fixes ]
-	- Fix https://github.com/nigelhorne/Test-Permissions/issues/1
+	- st_dev can be negative on FreeBSD with older perls (Perl/perl5#18837)
+	  Fixes https://github.com/nigelhorne/Test-Permissions/issues/1
 
 0.001.2	Tue Oct  6 09:16:55 AM EDT 2026
 	[ Bug Fixes ]
