@@ -4,7 +4,7 @@
 name: Test Dashboard
 
 permissions:
-  contents: write  # needed to push to gh-pages
+  contents: write # needed to push to gh-pages
 
 on:
   push:
@@ -29,13 +29,13 @@ jobs:
         perl: ["5.40"]
     steps:
       # Checkout repository
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           fetch-depth: 0
 
       # Install Perl via perlbrew
       - name: Setup Perl environment
-        uses: shogo82148/actions-setup-perl@v1.44.0
+        uses: shogo82148/actions-setup-perl@8b574cdc2dffdae49f803204a4f2b716a2fa1db7 # v1.44.2
         with:
           perl-version: ${{ matrix.perl }}
           # install cpanminus
@@ -96,11 +96,11 @@ jobs:
 
       - name: Set snapshot variables
         run: |
-          echo "SNAPSHOT_TIMESTAMP=$(date -u +%Y-%m-%dT%H%M%SZ)" >> $GITHUB_ENV
-          echo "SNAPSHOT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "SNAPSHOT_TIMESTAMP=$(date -u +%Y-%m-%dT%H%M%SZ)" >> "$GITHUB_ENV"
+          echo "SNAPSHOT_SHA=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
 
       - name: Add local bin to PATH
-        run: echo "$(pwd)/local/bin" >> $GITHUB_PATH
+        run: echo "$(pwd)/local/bin" >> "$GITHUB_PATH"
 
       - name: Install App::Test::Generator
         run: |
@@ -109,7 +109,7 @@ jobs:
             perl Makefile.PL && make install
           else
             echo "Install ATG"
-            cpanm -iqn App::Test::Generator@0.46
+            cpanm -iqn App::Test::Generator@0.51
           fi
 
       - name: Generate dashboard
@@ -179,7 +179,7 @@ jobs:
           # --generate_test=mutant and --generate_fuzz.
           git add xt/mutant_*.t xt/conf/mutant_*.yml 2>/dev/null || true
           # Force add any untracked files matching the pattern
-          find xt -name 'mutant_*.t' -o -name 'mutant_*.yml' | xargs git add 2>/dev/null || true
+          find xt \( -name 'mutant_*.t' -o -name 'mutant_*.yml' \) -print0 | xargs -0 git add 2>/dev/null || true
           git diff --cached --stat
           git config user.name "GitHub Actions"
           git config user.email "github-actions@github.com"
@@ -194,7 +194,7 @@ jobs:
       # Deploy HTML report to GitHub Pages
       - name: Publish test dashboard
         if: github.event_name != 'pull_request'
-        uses: peaceiris/actions-gh-pages@v4
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./cover_html
@@ -202,4 +202,4 @@ jobs:
           user_name: github-actions
           user_email: github-actions@github.com
           keep_files: true
-          enable_jekyll: false   # adds .nojekyll automatically, it adds nothing in prebuilt pages
+          enable_jekyll: false # adds .nojekyll automatically, it adds nothing in prebuilt pages
